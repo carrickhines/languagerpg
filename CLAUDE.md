@@ -98,7 +98,7 @@ his tracks instantly.
 1. **🔍 Fix It!** — proofreading. A sentence with exactly one error is shown
    as tappable word tokens; the child taps the mistake (wrong tap = foe
    attack, with the real mistake revealed), then taps the correction from 3
-   word cards. Content: `FIXIT` (~50 sentences) across homophones, irregular
+   word cards. Content: `FIXIT` (~115 sentences) across homophones, irregular
    past tense, common misspellings, tricky plurals, capitalization, and verb
    agreement. **Authoring rules:** the `wrong` word must appear exactly once
    in the sentence (matching ignores trailing `.,!?` but is case-sensitive —
@@ -108,9 +108,9 @@ his tracks instantly.
    able to be seen") and the child builds the word from chunk blocks
    (`in` + `visible`) tapped into slots, Word Builder-style. Chunks are
    colored by role: prefixes blue, roots green, suffixes violet
-   (`PREFIXES`/`SUFFIXES` sets drive the hue). Content: `FORGE` (~40 builds)
-   — compounds as warm-ups, then un-/re-/in-/im-/dis-/mis-/pre- and
-   -ful/-less/-ly/-er/-est/-able/-ness, plus a few three-part builds.
+   (`PREFIXES`/`SUFFIXES` sets drive the hue). Content: `FORGE` (~125 builds)
+   — compounds as warm-ups, then un-/re-/in-/im-/dis-/mis-/pre-/over-/under-
+   and -ful/-less/-ly/-er/-est/-able/-ness/-y, plus three-part builds.
    **Authoring rule:** only clean joins — the parts must concatenate into
    the real word with no spelling changes (so no `happy + ly`).
 
