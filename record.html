@@ -202,6 +202,10 @@ async function toggleRecord(id, btn) {
     clearTimeout(stopTimer);
     btn.textContent = '🎙️';
     btn.classList.remove('live');
+    // release the mic between takes: iPadOS ducks playback volume to near
+    // zero while a capture track is live, making the ▶ check inaudible
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
     const blob = new Blob(chunks, { type: recorder.mimeType });
     const fr = new FileReader();
     fr.onload = () => {           // store as a data URI → one portable JS file
