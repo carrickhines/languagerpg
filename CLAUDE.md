@@ -18,8 +18,8 @@ Two players, at two different levels:
   below) — the current focus is getting him kindergarten-ready.
 - **Older son (age 8, turning 9, 3rd grade)** — a confident reader working on
   correct spelling and grammar. Content can be more challenging: spelling
-  harder words, grammar rules, and eventually comprehension. **His tracks are
-  not built yet.**
+  harder words, grammar rules, and eventually comprehension. **His two tracks
+  are built** (see below).
 
 The level/track is chosen at the start of a game, so each kid plays the version
 suited to them.
@@ -84,6 +84,35 @@ the math game's Numberblocks counting aid.
 Foes are five emoji monsters with escalating HP (`FOES`): Slow Slime 🐌 →
 Pixel Imp 👾 → Giggly Ghost 👻 → Chompy Rex 🦖 → The Big Dragon 🐉. The player
 has 5 hearts; a normal hit does 1 damage, a double hit 2.
+
+## Older son's tracks (built, in `index.html`)
+
+Two "big hero" tracks for the 3rd grader. **Key property: they need zero
+voice clips** — a confident reader reads everything from the screen, so
+their content lists live only in `index.html` and never touch `record.html`
+or the closed vocabulary. (The recorded praise clips `P_great`/`P_double`
+still play on correct answers.) The menu groups the quest cards into
+**"Little hero quests"** and **"Big hero quests"** rows so each kid finds
+his tracks instantly.
+
+1. **🔍 Fix It!** — proofreading. A sentence with exactly one error is shown
+   as tappable word tokens; the child taps the mistake (wrong tap = foe
+   attack, with the real mistake revealed), then taps the correction from 3
+   word cards. Content: `FIXIT` (~50 sentences) across homophones, irregular
+   past tense, common misspellings, tricky plurals, capitalization, and verb
+   agreement. **Authoring rules:** the `wrong` word must appear exactly once
+   in the sentence (matching ignores trailing `.,!?` but is case-sensitive —
+   that's what makes capitalization items work), and decoys must not equal
+   the fix or be defensible corrections themselves.
+2. **⚒️ Word Forge** — vocabulary/morphology. A definition is shown ("not
+   able to be seen") and the child builds the word from chunk blocks
+   (`in` + `visible`) tapped into slots, Word Builder-style. Chunks are
+   colored by role: prefixes blue, roots green, suffixes violet
+   (`PREFIXES`/`SUFFIXES` sets drive the hue). Content: `FORGE` (~40 builds)
+   — compounds as warm-ups, then un-/re-/in-/im-/dis-/mis-/pre- and
+   -ful/-less/-ly/-er/-est/-able/-ness, plus a few three-part builds.
+   **Authoring rule:** only clean joins — the parts must concatenate into
+   the real word with no spelling changes (so no `happy + ly`).
 
 ## Core gameplay loop
 

@@ -130,9 +130,21 @@
     font-size: 16px;
     letter-spacing: 3px;
     text-transform: uppercase;
-    margin: 14px 0 10px;
+    margin: 10px 0 8px;
     color: var(--accent);
     opacity: .92;
+  }
+
+  /* the menu can outgrow the frame with both hero rows: center when it
+     fits, scroll when it doesn't (margin:auto does both) */
+  #menu { justify-content: flex-start; overflow-y: auto; scrollbar-width: none; }
+  #menu::-webkit-scrollbar { display: none; }
+  .menu-inner {
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
   }
   .group-label::before, .group-label::after {
     content: "";
@@ -514,6 +526,80 @@
   .block.pop { animation: pop .35s; }
   @keyframes pop { 40% { transform: scale(1.25) rotate(-6deg); } }
 
+  /* Word Forge: the same blocks, but holding word chunks — colored by kind
+     (prefix / root / suffix) instead of by letter */
+  .block.chunk {
+    width: auto;
+    min-width: 64px;
+    padding: 0 16px;
+    font-size: 24px;
+    letter-spacing: 1px;
+    text-transform: lowercase;
+  }
+
+  /* ---------- Fix It!: a tappable sentence ---------- */
+  #qBig.sentence {
+    font-family: var(--body);
+    font-size: clamp(20px, 3vw, 28px);
+    font-weight: normal;
+    letter-spacing: normal;
+    line-height: 1.7;
+    max-width: 56ch;
+  }
+  .word-tok {
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: bold;
+    color: #fff;
+    background: none;
+    border: none;
+    border-radius: 8px;
+    box-shadow: none;
+    padding: 2px 8px;
+    display: inline-block;
+  }
+  .word-tok:hover { background: rgba(255,255,255,.12); filter: none; }
+  .word-tok:active { transform: translateY(2px); box-shadow: none; }
+  .word-tok.found {
+    background: rgba(255,94,126,.28);
+    outline: 2px dashed var(--bad);
+    text-decoration: line-through;
+  }
+  .word-tok.fixed {
+    background: rgba(92,232,160,.25);
+    outline: 2px solid var(--good);
+    text-decoration: none;
+  }
+
+  /* ---------- Word Forge: definition + chunk slots ---------- */
+  #qBig.forge { letter-spacing: normal; }
+  .meaning {
+    font-family: var(--body);
+    font-size: clamp(18px, 2.6vw, 24px);
+    font-weight: normal;
+    color: rgba(255,255,255,.9);
+    margin: 6px 0 12px;
+    max-width: 46ch;
+  }
+  .forge-slots { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .fslot {
+    min-width: 78px;
+    height: 48px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border-bottom: 4px dashed rgba(255,255,255,.45);
+    background: rgba(0,0,0,.2);
+    font-family: var(--display);
+    font-size: 24px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .fslot.filled { border-bottom-color: transparent; background: rgba(92,232,160,.22); }
+
   .wordcard, .picbtn {
     color: #fff;
     background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.07));
@@ -606,10 +692,11 @@
 
   <!-- ================= MENU ================= -->
   <section class="screen show" id="menu">
+    <div class="menu-inner">
     <h1>Language RPG</h1>
     <div class="subtitle">Read, spell, and beat the monsters!</div>
 
-    <div class="group-label">Choose your quest</div>
+    <div class="group-label">Little hero quests</div>
     <div class="btn-row" id="trackGrid">
       <button class="choice" data-track="letters">
         <span class="emoji">🔠</span>Letter Hunt
@@ -629,6 +716,18 @@
       </button>
     </div>
 
+    <div class="group-label">Big hero quests</div>
+    <div class="btn-row" id="trackGrid2">
+      <button class="choice" data-track="fixit">
+        <span class="emoji">🔍</span>Fix It!
+        <span class="sub">Find and fix the mistake</span>
+      </button>
+      <button class="choice" data-track="forge">
+        <span class="emoji">⚒️</span>Word Forge
+        <span class="sub">Build words from parts</span>
+      </button>
+    </div>
+
     <div class="group-label">Choose your speed</div>
     <div class="btn-row" id="modeRow">
       <button class="choice" data-mode="easy">
@@ -645,8 +744,9 @@
       </button>
     </div>
 
-    <div style="margin-top:22px">
+    <div style="margin-top:18px">
       <button id="startBtn" disabled>Start Battle!</button>
+    </div>
     </div>
   </section>
 
@@ -874,6 +974,138 @@ const SIGHT = ['the','a','and','to','in','is','it','you','see','we',
                'can','like','go','my','me','at','up','no','so','on',
                'big','red','run','play'];
 
+/* ------------------------------------------------------------------
+   Big-hero tracks (3rd grade): all text on screen, no voice clips
+   needed — a confident reader drives these entirely by reading.
+   ------------------------------------------------------------------ */
+
+// Fix It!: each sentence has exactly ONE wrong word. The child taps the
+// mistake, then taps the correction. `wrong` must appear exactly once in
+// the sentence (trailing .,!? is ignored when matching; case matters).
+const FIXIT = [
+  // homophones
+  { bad: 'They left there backpacks at school.', wrong: 'there', fix: 'their', decoys: ["they're", 'theirs'] },
+  { bad: 'Your going to love this game.', wrong: 'Your', fix: "You're", decoys: ['Yore', 'Youre'] },
+  { bad: "The dog wagged it's tail.", wrong: "it's", fix: 'its', decoys: ["its'", 'it is'] },
+  { bad: 'We are going two the beach.', wrong: 'two', fix: 'to', decoys: ['too', 'tow'] },
+  { bad: 'Can I come to?', wrong: 'to', fix: 'too', decoys: ['two', 'tow'] },
+  { bad: 'I can here the music.', wrong: 'here', fix: 'hear', decoys: ['hare', 'heer'] },
+  { bad: 'Please come over hear.', wrong: 'hear', fix: 'here', decoys: ['hair', 'heare'] },
+  { bad: 'I got a knew bike for my birthday.', wrong: 'knew', fix: 'new', decoys: ['know', 'gnew'] },
+  { bad: 'Do you want to right a story?', wrong: 'right', fix: 'write', decoys: ['rite', 'wright'] },
+  { bad: 'The night rode a horse into the castle.', wrong: 'night', fix: 'knight', decoys: ['nite', 'nighte'] },
+  // irregular past tense
+  { bad: 'He runned all the way home.', wrong: 'runned', fix: 'ran', decoys: ['runed', 'runn'] },
+  { bad: 'She goed to the store with Mom.', wrong: 'goed', fix: 'went', decoys: ['goned', 'wented'] },
+  { bad: 'I catched the ball with one hand.', wrong: 'catched', fix: 'caught', decoys: ['cought', 'catchd'] },
+  { bad: 'Our teacher teached us fractions.', wrong: 'teached', fix: 'taught', decoys: ['tought', 'teachd'] },
+  { bad: 'The glass breaked into tiny pieces.', wrong: 'breaked', fix: 'broke', decoys: ['broked', 'brake'] },
+  { bad: 'We eated pizza for dinner.', wrong: 'eated', fix: 'ate', decoys: ['eight', 'aten'] },
+  { bad: 'Dad maked pancakes this morning.', wrong: 'maked', fix: 'made', decoys: ['maid', 'maded'] },
+  { bad: 'She taked my pencil by mistake.', wrong: 'taked', fix: 'took', decoys: ['tooked', 'toke'] },
+  { bad: 'I thinked about it all day.', wrong: 'thinked', fix: 'thought', decoys: ['thunk', 'thoght'] },
+  { bad: 'He buyed a comic book.', wrong: 'buyed', fix: 'bought', decoys: ['boughted', 'bot'] },
+  { bad: 'The bird flied over the house.', wrong: 'flied', fix: 'flew', decoys: ['flu', 'flyed'] },
+  { bad: 'I drawed a dragon in art class.', wrong: 'drawed', fix: 'drew', decoys: ['drawn', 'drue'] },
+  // common misspellings
+  { bad: 'My best freind lives next door.', wrong: 'freind', fix: 'friend', decoys: ['frend', 'freend'] },
+  { bad: 'I was late becuase I overslept.', wrong: 'becuase', fix: 'because', decoys: ['becase', 'becouse'] },
+  { bad: "I don't know wich one to pick.", wrong: 'wich', fix: 'which', decoys: ['witch', 'whitch'] },
+  { bad: 'We lernd about volcanoes today.', wrong: 'lernd', fix: 'learned', decoys: ['lerned', 'learnd'] },
+  { bad: 'That roller coaster was really scarry.', wrong: 'scarry', fix: 'scary', decoys: ['scarey', 'skary'] },
+  { bad: 'Can you beleive we won the game?', wrong: 'beleive', fix: 'believe', decoys: ['belive', 'beleave'] },
+  { bad: 'See you tommorow at practice!', wrong: 'tommorow', fix: 'tomorrow', decoys: ['tomorow', 'tommorrow'] },
+  { bad: 'My favorite subject is sceince.', wrong: 'sceince', fix: 'science', decoys: ['sience', 'sciense'] },
+  { bad: 'It was a beutiful sunny day.', wrong: 'beutiful', fix: 'beautiful', decoys: ['beautifull', 'butiful'] },
+  { bad: 'The libary has new books.', wrong: 'libary', fix: 'library', decoys: ['libarry', 'librery'] },
+  // tricky plurals
+  { bad: 'The babys were sleeping in their cribs.', wrong: 'babys', fix: 'babies', decoys: ['babyes', 'babbies'] },
+  { bad: 'Three wolfs howled at the moon.', wrong: 'wolfs', fix: 'wolves', decoys: ['wolfes', 'wolvs'] },
+  { bad: 'The foxs hid in the bushes.', wrong: 'foxs', fix: 'foxes', decoys: ['foxies', 'foxen'] },
+  { bad: 'All the childs lined up for lunch.', wrong: 'childs', fix: 'children', decoys: ['childes', 'childrens'] },
+  { bad: 'Two mouses ran under the door.', wrong: 'mouses', fix: 'mice', decoys: ['mices', 'meese'] },
+  { bad: 'The leafs turned red in fall.', wrong: 'leafs', fix: 'leaves', decoys: ['leafes', 'leves'] },
+  { bad: 'My foots are cold.', wrong: 'foots', fix: 'feet', decoys: ['feets', 'footes'] },
+  { bad: 'The dentist checked my tooths.', wrong: 'tooths', fix: 'teeth', decoys: ['teeths', 'toothes'] },
+  { bad: 'Five sheeps grazed in the field.', wrong: 'sheeps', fix: 'sheep', decoys: ['sheepes', 'shep'] },
+  { bad: 'The mans built a treehouse.', wrong: 'mans', fix: 'men', decoys: ['mens', 'manes'] },
+  // capitalization
+  { bad: 'can you open the window?', wrong: 'can', fix: 'Can', decoys: ['CAN', 'cAn'] },
+  { bad: 'My birthday is in june.', wrong: 'june', fix: 'June', decoys: ['JUNE', 'Junne'] },
+  { bad: 'We visited paris last summer.', wrong: 'paris', fix: 'Paris', decoys: ['PARIS', 'pariS'] },
+  { bad: 'My friend tom is funny.', wrong: 'tom', fix: 'Tom', decoys: ['TOM', 'toM'] },
+  { bad: 'See you on monday!', wrong: 'monday', fix: 'Monday', decoys: ['MONDAY', 'monDay'] },
+  // verb agreement
+  { bad: "He don't like broccoli.", wrong: "don't", fix: "doesn't", decoys: ['doesnt', 'do'] },
+  { bad: 'We was playing outside all day.', wrong: 'was', fix: 'were', decoys: ['wass', 'is'] },
+  { bad: 'She have two cats.', wrong: 'have', fix: 'has', decoys: ['haves', 'had'] },
+  { bad: 'There is five cookies left.', wrong: 'is', fix: 'are', decoys: ['am', 'be'] },
+  { bad: 'The dogs barks at the mail truck.', wrong: 'barks', fix: 'bark', decoys: ['barking', 'barkses'] },
+];
+
+// Word Forge: build a word from chunk blocks to match the meaning.
+// m = meaning shown on screen, p = the parts in order, d = decoy chunks.
+// Only clean joins (no spelling changes like happy+ly) so parts always
+// concatenate into the real word.
+const FORGE = [
+  // warm-up compounds
+  { m: 'a bow of colors in the sky', p: ['rain', 'bow'], d: ['sun', 'drop'] },
+  { m: 'a cake the size of a cup', p: ['cup', 'cake'], d: ['pan', 'pot'] },
+  { m: 'a ball made of snow', p: ['snow', 'ball'], d: ['sun', 'bell'] },
+  { m: 'the light of the sun', p: ['sun', 'light'], d: ['moon', 'lamp'] },
+  { m: 'a house for a dog', p: ['dog', 'house'], d: ['cat', 'home'] },
+  { m: 'the time when you go to bed', p: ['bed', 'time'], d: ['nap', 'clock'] },
+  { m: 'a coat you wear in the rain', p: ['rain', 'coat'], d: ['snow', 'hat'] },
+  { m: 'schoolwork you do at home', p: ['home', 'work'], d: ['house', 'job'] },
+  // un-
+  { m: 'not happy', p: ['un', 'happy'], d: ['dis', 're'] },
+  { m: 'not safe', p: ['un', 'safe'], d: ['non', 'sane'] },
+  { m: 'not fair', p: ['un', 'fair'], d: ['im', 'fare'] },
+  { m: 'not kind', p: ['un', 'kind'], d: ['dis', 'mis'] },
+  { m: 'not lucky', p: ['un', 'lucky'], d: ['in', 'ly'] },
+  { m: 'to do the opposite of lock', p: ['un', 'lock'], d: ['re', 'key'] },
+  // re-
+  { m: 'to read again', p: ['re', 'read'], d: ['un', 'pre'] },
+  { m: 'to tell a story again', p: ['re', 'tell'], d: ['dis', 'talk'] },
+  { m: 'to fill something again', p: ['re', 'fill'], d: ['un', 'full'] },
+  { m: 'to build something again', p: ['re', 'build'], d: ['pre', 'built'] },
+  // in- / im- / dis-
+  { m: 'not able to be seen', p: ['in', 'visible'], d: ['un', 're'] },
+  { m: 'not possible', p: ['im', 'possible'], d: ['un', 'in'] },
+  { m: 'not polite', p: ['im', 'polite'], d: ['dis', 'un'] },
+  { m: 'to not agree', p: ['dis', 'agree'], d: ['un', 'mis'] },
+  { m: 'to vanish from sight', p: ['dis', 'appear'], d: ['re', 'un'] },
+  // mis- / pre-
+  { m: 'to spell a word wrong', p: ['mis', 'spell'], d: ['dis', 'spel'] },
+  { m: 'to behave badly', p: ['mis', 'behave'], d: ['un', 'be'] },
+  { m: 'to heat the oven before', p: ['pre', 'heat'], d: ['re', 'hot'] },
+  // -ful / -less
+  { m: 'full of care', p: ['care', 'ful'], d: ['ly', 'full'] },
+  { m: 'without any fear', p: ['fear', 'less'], d: ['ful', 'un'] },
+  { m: 'full of color', p: ['color', 'ful'], d: ['less', 'ly'] },
+  { m: 'full of help', p: ['help', 'ful'], d: ['less', 'ing'] },
+  { m: 'without a home', p: ['home', 'less'], d: ['ful', 'un'] },
+  { m: 'without any use', p: ['use', 'less'], d: ['ful', 're'] },
+  // -ly / -er / -est
+  { m: 'in a quick way', p: ['quick', 'ly'], d: ['er', 'ful'] },
+  { m: 'in a slow way', p: ['slow', 'ly'], d: ['est', 'less'] },
+  { m: 'a person who teaches', p: ['teach', 'er'], d: ['ly', 'est'] },
+  { m: 'a person who paints', p: ['paint', 'er'], d: ['ing', 'ly'] },
+  { m: 'the most fast of all', p: ['fast', 'est'], d: ['er', 'ly'] },
+  // -able / -ness
+  { m: 'able to be washed', p: ['wash', 'able'], d: ['ible', 'ful'] },
+  { m: 'being very kind', p: ['kind', 'ness'], d: ['ful', 'ly'] },
+  { m: 'being full of dark', p: ['dark', 'ness'], d: ['less', 'ful'] },
+  // three-part builds
+  { m: 'in a way that is full of care', p: ['care', 'ful', 'ly'], d: ['less', 'un'] },
+  { m: 'not full of help', p: ['un', 'help', 'ful'], d: ['re', 'less'] },
+  { m: 'able to be used again', p: ['re', 'use', 'able'], d: ['un', 'ful'] },
+];
+
+// chunk kinds, for coloring the forge blocks by role
+const PREFIXES = new Set(['un', 're', 'in', 'im', 'dis', 'pre', 'mis', 'non']);
+const SUFFIXES = new Set(['ful', 'less', 'ly', 'er', 'est', 'able', 'ible', 'ness', 'y', 'ing', 'ed']);
+
 // Foes: escalating HP; last one is the boss. `scale` evens out emoji glyphs
 // that fill their em-box differently, so the foes read as similar-sized.
 const FOES = [
@@ -938,19 +1170,20 @@ function showScreen(id) {
 /* ==================================================================
    Menu wiring
    ================================================================== */
-document.querySelectorAll('#trackGrid .choice').forEach(btn => {
+// both quest rows (little + big hero) share one selection
+document.querySelectorAll('#menu .choice[data-track]').forEach(btn => {
   btn.addEventListener('click', () => {
     Sound.unlock(); Sound.click();
-    document.querySelectorAll('#trackGrid .choice').forEach(b => b.classList.remove('sel'));
+    document.querySelectorAll('#menu .choice[data-track]').forEach(b => b.classList.remove('sel'));
     btn.classList.add('sel');
     state.track = btn.dataset.track;
     updateStart();
   });
 });
-document.querySelectorAll('#modeRow .choice').forEach(btn => {
+document.querySelectorAll('#menu .choice[data-mode]').forEach(btn => {
   btn.addEventListener('click', () => {
     Sound.unlock(); Sound.click();
-    document.querySelectorAll('#modeRow .choice').forEach(b => b.classList.remove('sel'));
+    document.querySelectorAll('#menu .choice[data-mode]').forEach(b => b.classList.remove('sel'));
     btn.classList.add('sel');
     state.mode = btn.dataset.mode;
     updateStart();
@@ -986,7 +1219,9 @@ function startGame() {
   state.playerHp = PLAYER_HP;
   state.draw = makeDeck(
     state.track === 'letters' ? LETTERS :
-    state.track === 'sight'   ? SIGHT   : WORDS);
+    state.track === 'sight'   ? SIGHT   :
+    state.track === 'fixit'   ? FIXIT   :
+    state.track === 'forge'   ? FORGE   : WORDS);
   showScreen('game');
   spawnFoe();
 }
@@ -1076,7 +1311,30 @@ function makeReadQ() {
   };
 }
 
-const MAKERS = { letters: makeLetterQ, builder: makeBuilderQ, sight: makeSightQ, read: makeReadQ };
+function makeFixitQ() {
+  const item = state.draw();
+  return {
+    prompt: 'Tap the mistake!',
+    bad: item.bad, wrong: item.wrong, fix: item.fix, decoys: item.decoys,
+    isFixit: true,
+    sayIt: null,   // no audio — big-hero tracks are read from the screen
+  };
+}
+
+function makeForgeQ() {
+  const item = state.draw();
+  return {
+    prompt: 'Build the word!',
+    meaning: item.m,
+    parts: item.p,
+    bank: shuffle([...item.p, ...item.d]),
+    isForge: true,
+    sayIt: null,   // no audio — big-hero tracks are read from the screen
+  };
+}
+
+const MAKERS = { letters: makeLetterQ, builder: makeBuilderQ, sight: makeSightQ,
+                 read: makeReadQ, fixit: makeFixitQ, forge: makeForgeQ };
 
 /* ==================================================================
    Render the question + answer area
@@ -1086,12 +1344,30 @@ function newQuestion() {
   state.answered = false;
   $('feedback').textContent = '';
   $('qPrompt').textContent = q.prompt;
+  $('qBig').className = '';
   $('sayBtn').style.display = q.sayIt ? '' : 'none';
 
   const answers = $('answers');
   answers.innerHTML = '';
 
-  if (q.isBuilder) {
+  if (q.isFixit) {
+    renderFixit();
+  } else if (q.isForge) {
+    q.filled = [];
+    renderForgeSlots();
+    q.bank.forEach(chunk => {
+      const b = chunkBtn(chunk);
+      b.addEventListener('click', () => {
+        if (state.answered || q.filled.length >= q.parts.length) return;
+        Sound.tap();
+        b.classList.add('used', 'pop');
+        q.filled.push({ chunk, btn: b });
+        renderForgeSlots();
+        if (q.filled.length === q.parts.length) checkForge();
+      });
+      answers.appendChild(b);
+    });
+  } else if (q.isBuilder) {
     // dashed slots in the card; a bank of ABC blocks below
     q.filled = [];
     renderSlots();
@@ -1150,6 +1426,111 @@ function renderSlots() {
       renderSlots();
     });
   });
+}
+
+/* ==================================================================
+   Fix It! — tap the wrong word, then tap the correction
+   ================================================================== */
+const coreWord = tok => tok.replace(/[.,!?]+$/, '');
+
+function renderFixit() {
+  const q = state.question;
+  const big = $('qBig');
+  big.className = 'sentence';
+  big.innerHTML = '';
+  q.bad.split(' ').forEach(tok => {
+    const w = document.createElement('button');
+    w.className = 'word-tok';
+    w.textContent = tok;
+    w.addEventListener('click', () => tapToken(w, tok));
+    big.appendChild(w);
+    big.appendChild(document.createTextNode(' '));
+  });
+}
+
+function tapToken(el, tok) {
+  const q = state.question;
+  if (state.answered || q.found) return;
+  if (coreWord(tok) === q.wrong) {
+    // found it — phase two: pick the correction
+    q.found = true;
+    Sound.tap();
+    el.classList.add('found');
+    $('qPrompt').textContent = 'Now fix it!';
+    shuffle([q.fix, ...q.decoys]).forEach(choice => {
+      const c = document.createElement('button');
+      c.className = 'wordcard';
+      c.textContent = choice;
+      c.addEventListener('click', () => {
+        if (state.answered) return;
+        if (choice === q.fix) {
+          c.classList.add('right');
+          el.textContent = tok.replace(q.wrong, q.fix);
+          el.classList.remove('found');
+          el.classList.add('fixed');
+          resolveCorrect();
+        } else {
+          c.classList.add('wrongPick');
+          resolveWrong(`It should be "${q.fix}"!`);
+        }
+      });
+      $('answers').appendChild(c);
+    });
+  } else {
+    // tapped a fine word — reveal the real mistake
+    el.classList.add('wrongPick');
+    const culprit = [...$('qBig').querySelectorAll('.word-tok')]
+      .find(w => coreWord(w.textContent) === q.wrong);
+    if (culprit) culprit.classList.add('found');
+    resolveWrong(`The mistake was "${q.wrong}" — it should be "${q.fix}"!`);
+  }
+}
+
+/* ==================================================================
+   Word Forge — build a word from prefix / root / suffix chunks
+   ================================================================== */
+function chunkBtn(chunk) {
+  const b = document.createElement('button');
+  b.className = 'block chunk';
+  b.textContent = chunk;
+  // color by role: prefixes blue, suffixes violet, roots green
+  b.style.setProperty('--h',
+    PREFIXES.has(chunk) ? 210 : SUFFIXES.has(chunk) ? 285 : 130);
+  return b;
+}
+
+function renderForgeSlots() {
+  const q = state.question;
+  const big = $('qBig');
+  big.className = 'forge';
+  big.innerHTML = `<div class="meaning">“${q.meaning}”</div>` +
+    '<div class="forge-slots">' + q.parts.map((_, i) => {
+      const f = q.filled[i];
+      return `<span class="fslot${f ? ' filled' : ''}">${f ? f.chunk : ''}</span>`;
+    }).join('') + '</div>';
+  // tapping a filled slot puts the chunk back
+  big.querySelectorAll('.fslot.filled').forEach((el, i) => {
+    el.addEventListener('click', () => {
+      if (state.answered) return;
+      Sound.click();
+      const removed = q.filled.splice(i, 1)[0];
+      removed.btn.classList.remove('used', 'pop');
+      renderForgeSlots();
+    });
+  });
+}
+
+function checkForge() {
+  const q = state.question;
+  const built = q.filled.map(f => f.chunk).join('');
+  const word = q.parts.join('');
+  if (built === word) {
+    resolveCorrect();
+  } else {
+    resolveWrong(`It's ${q.parts.join(' + ').toUpperCase()} — ${word}!`);
+    q.filled.forEach(f => f.btn.classList.remove('used', 'pop'));
+    q.filled = [];
+  }
 }
 
 /* ==================================================================
