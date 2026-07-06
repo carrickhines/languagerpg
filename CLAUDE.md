@@ -77,9 +77,9 @@ Four tracks forming a learning ladder toward reading:
    hint**; the child reads it and taps the matching emoji out of 4. The word
    is spoken *after* answering as reinforcement.
 
-Answer tiles are styled as chunky wooden **ABC blocks**, each tinted its own
-hue by alphabet position — the spiritual sibling of the physical alphabet
-blocks and the old math game's Numberblocks aid.
+Answer tiles are styled as chunky **ABC blocks**, each tinted its own hue by
+alphabet position — the spiritual sibling of the physical alphabet blocks and
+the math game's Numberblocks counting aid.
 
 Foes are five emoji monsters with escalating HP (`FOES`): Slow Slime 🐌 →
 Pixel Imp 👾 → Giggly Ghost 👻 → Chompy Rex 🦖 → The Big Dragon 🐉. The player
@@ -180,6 +180,20 @@ the looping "time's up" alarm for the iPad-game-time reward.
   prefer vanilla JS so it stays easy to open, read, and tweak.
 - Keep it a single self-contained game that's easy for a parent to launch on a
   laptop or tablet.
+
+## Visual design — shared system with the math game
+
+The UI deliberately matches the family's **Math RPG** game so the two feel
+like siblings (a local copy of that game may sit at `index-ref.html`,
+gitignored, purely as a styling reference). The shared system: a rounded
+`#app` frame on a dark page, twilight starfield + pink horizon-glow arena,
+glassy dark panels (`--panel`) with backdrop blur, gold gradient buttons with
+a 3D "lip" shadow, rounded display font, HP drawn as countable pips (green
+hearts for the hero, pink orbs for the foe), a hero-vs-foe emoji sprite arena
+with lunge/slash/screen-flash attack animations, and the timer bar with a
+white flag marker plus "⚡ DOUBLE! ⚡" label for the fast zone. When touching
+the UI, keep these two games visually consistent (they don't need to be
+identical).
 
 ## Design priorities
 
