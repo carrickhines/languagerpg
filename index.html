@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>LanguageRPG</title>
+<style>
+  /* ============ tokens ============ */
+  :root {
+    --sky:    #3b2d6e;   /* twilight indigo — the arena */
+    --sky2:   #6a4fc9;   /* violet glow */
+    --card:   #fff9ec;   /* warm paper — question cards */
+    --ink:    #2b2350;   /* dark text on paper */
+    --gold:   #ffc53d;   /* fast zone, stars, double hits */
+    --grass:  #58c15c;   /* correct */
+    --berry:  #ff5d73;   /* foe, damage */
+    --white:  #fffdf7;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body { height: 100%; }
+  body {
+    font-family: 'Chalkboard SE', 'Comic Sans MS', ui-rounded, 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(180deg, var(--sky) 0%, var(--sky2) 100%);
+    color: var(--white);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  button {
+    font-family: inherit;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    background: none;
+  }
+  button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; border-radius: 12px; }
+
+  .screen { width: 100%; max-width: 560px; padding: 16px; display: none; flex-direction: column; align-items: center; }
+  .screen.show { display: flex; }
+
+  /* ============ mute toggle ============ */
+  #muteBtn {
+    position: fixed; top: 10px; right: 10px; z-index: 50;
+    font-size: 1.6rem; width: 52px; height: 52px; border-radius: 50%;
+    background: rgba(255,255,255,.15);
+  }
+
+  /* ============ menu ============ */
+  #menu h1 {
+    margin-top: 40px;
+    font-size: clamp(2.2rem, 9vw, 3.2rem);
+    letter-spacing: .04em;
+    text-shadow: 0 4px 0 rgba(0,0,0,.25);
+  }
+  #menu h1 .spark { color: var(--gold); }
+  .tagline { opacity: .85; margin: 6px 0 22px; font-size: 1.05rem; }
+
+  .pick-label { font-size: 1.1rem; margin: 14px 0 8px; align-self: flex-start; opacity: .9; }
+
+  .track-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
+  .track-card {
+    background: rgba(255,255,255,.12);
+    border: 3px solid transparent;
+    border-radius: 20px;
+    padding: 14px 10px;
+    text-align: center;
+    transition: transform .12s, border-color .12s, background .12s;
+  }
+  .track-card .big { font-size: 2.4rem; display: block; }
+  .track-card .name { font-size: 1.15rem; display: block; margin-top: 4px; }
+  .track-card .sub { font-size: .8rem; opacity: .75; display: block; margin-top: 2px; }
+  .track-card.sel { border-color: var(--gold); background: rgba(255,197,61,.22); transform: scale(1.03); }
+
+  .mode-row { display: flex; gap: 10px; width: 100%; }
+  .mode-pill {
+    flex: 1;
+    background: rgba(255,255,255,.12);
+    border: 3px solid transparent;
+    border-radius: 16px;
+    padding: 10px 4px;
+    font-size: 1.05rem;
+  }
+  .mode-pill .big { font-size: 1.5rem; display: block; }
+  .mode-pill.sel { border-color: var(--gold); background: rgba(255,197,61,.22); }
+
+  #startBtn {
+    margin: 26px 0 30px;
+    font-size: 1.7rem;
+    letter-spacing: .05em;
+    background: var(--gold);
+    color: var(--ink);
+    padding: 16px 54px;
+    border-radius: 999px;
+    box-shadow: 0 6px 0 #c9922a;
+    transition: transform .1s, box-shadow .1s;
+  }
+  #startBtn:active { transform: translateY(4px); box-shadow: 0 2px 0 #c9922a; }
+  #startBtn:disabled { opacity: .4; box-shadow: 0 6px 0 #999; }
+
+  /* ============ game: foe arena ============ */
+  #foeArea { position: relative; text-align: center; margin-top: 26px; min-height: 128px; }
+  #foeSprite {
+    font-size: 5rem;
+    display: inline-block;
+    animation: bob 2.4s ease-in-out infinite;
+    filter: drop-shadow(0 8px 8px rgba(0,0,0,.35));
+  }
+  @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+  #foeSprite.hit { animation: hitShake .45s; }
+  @keyframes hitShake {
+    0%,100% { transform: translateX(0) rotate(0); }
+    20% { transform: translateX(-14px) rotate(-8deg); }
+    40% { transform: translateX(12px) rotate(6deg); }
+    60% { transform: translateX(-8px) rotate(-4deg); }
+    80% { transform: translateX(5px) rotate(2deg); }
+  }
+  #foeSprite.ko { animation: koSpin .8s forwards; }
+  @keyframes koSpin { to { transform: rotate(360deg) scale(0); opacity: 0; } }
+
+  #foeName { font-size: 1.15rem; margin-top: 2px; }
+  .hpbar { width: 200px; height: 16px; background: rgba(0,0,0,.4); border-radius: 999px; margin: 6px auto 0; overflow: hidden; }
+  .hpbar > div { height: 100%; background: var(--berry); border-radius: 999px; transition: width .35s; }
+
+  .burst {
+    position: absolute; left: 50%; top: 34%;
+    font-size: 3rem; pointer-events: none;
+    animation: burstUp .7s forwards;
+  }
+  @keyframes burstUp {
+    0% { transform: translate(-50%,-50%) scale(.4); opacity: 1; }
+    100% { transform: translate(-50%,-160%) scale(1.5); opacity: 0; }
+  }
+  .dmgnum {
+    position: absolute; left: 62%; top: 20%;
+    font-size: 2rem; color: var(--gold); pointer-events: none;
+    text-shadow: 0 2px 0 rgba(0,0,0,.4);
+    animation: burstUp .8s forwards;
+  }
+
+  #hearts { font-size: 1.5rem; margin: 8px 0 4px; letter-spacing: 3px; min-height: 1.8rem; }
+  body.playerHit { animation: pageFlash .4s; }
+  @keyframes pageFlash { 30% { background: #7a2743; } }
+
+  /* ============ game: question card ============ */
+  #qCard {
+    background: var(--card);
+    color: var(--ink);
+    width: 100%;
+    border-radius: 24px;
+    padding: 16px;
+    text-align: center;
+    box-shadow: 0 8px 0 rgba(0,0,0,.25);
+  }
+  #qPrompt { font-size: 1.25rem; margin-bottom: 6px; }
+  #qBig { font-size: 3.4rem; min-height: 4.2rem; line-height: 1.2; letter-spacing: .06em; }
+  #qBig .slot {
+    display: inline-block; width: 1.1em; height: 1.25em;
+    border-bottom: 5px dashed #b9a; margin: 0 .07em; vertical-align: bottom;
+    font-size: inherit; border-radius: 6px;
+  }
+  #qBig .slot.filled { border-bottom-color: transparent; background: rgba(88,193,92,.15); }
+  #sayBtn {
+    font-size: 1.9rem; margin-top: 4px;
+    background: rgba(43,35,80,.08); border-radius: 999px; padding: 6px 22px;
+  }
+  #sayBtn:active { transform: scale(.92); }
+
+  /* ============ timer ============ */
+  #timerWrap { width: 100%; height: 22px; background: rgba(0,0,0,.4); border-radius: 999px; margin: 14px 0; position: relative; overflow: hidden; }
+  #timerFill { height: 100%; background: var(--grass); border-radius: 999px; width: 100%; }
+  #timerFill.fastzone { background: var(--gold); }
+  #fastMark { position: absolute; top: 0; bottom: 0; width: 4px; background: var(--white); }
+
+  /* ============ answers: ABC blocks (the signature) ============ */
+  #answers { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; width: 100%; padding-bottom: 24px; }
+
+  .block {
+    /* a chunky wooden alphabet block, tinted per letter */
+    --h: 40;
+    width: 78px; height: 78px;
+    font-size: 2.3rem;
+    font-weight: bold;
+    color: var(--ink);
+    background: hsl(var(--h) 85% 82%);
+    border: 4px solid hsl(var(--h) 60% 62%);
+    border-radius: 16px;
+    box-shadow: 0 5px 0 hsl(var(--h) 55% 50%);
+    transition: transform .1s;
+  }
+  .block:active { transform: translateY(4px) scale(.96); box-shadow: 0 1px 0 hsl(var(--h) 55% 50%); }
+  .block.used { opacity: .25; pointer-events: none; }
+  .block.pop { animation: pop .35s; }
+  @keyframes pop { 40% { transform: scale(1.25) rotate(-6deg); } }
+
+  .wordcard, .picbtn {
+    background: var(--card); color: var(--ink);
+    border-radius: 18px;
+    padding: 14px 20px;
+    font-size: 1.9rem;
+    box-shadow: 0 5px 0 rgba(0,0,0,.3);
+    transition: transform .1s;
+    min-width: 100px;
+  }
+  .picbtn { font-size: 2.8rem; }
+  .picbtn { background: var(--card); color: var(--ink); border-radius: 18px; padding: 12px 20px; box-shadow: 0 5px 0 rgba(0,0,0,.3); font-size: 2.8rem; }
+  .wordcard:active, .picbtn:active { transform: translateY(3px); }
+  .right   { background: var(--grass) !important; color: var(--white) !important; }
+  .wrongPick { animation: wobble .5s; }
+  @keyframes wobble { 25% { transform: rotate(-5deg); } 75% { transform: rotate(5deg); } }
+
+  #feedback { min-height: 2rem; font-size: 1.3rem; text-align: center; margin-top: 2px; }
+
+  /* ============ win / lose ============ */
+  .endTitle { font-size: 2.6rem; margin-top: 60px; text-shadow: 0 4px 0 rgba(0,0,0,.3); }
+  .endEmoji { font-size: 5rem; margin: 18px 0; }
+  .endMsg { font-size: 1.3rem; text-align: center; margin-bottom: 8px; }
+  .rewardBox {
+    background: rgba(255,255,255,.12); border-radius: 20px;
+    padding: 18px 24px; margin: 14px 0; text-align: center; width: 100%;
+  }
+  .rewardBox .mins { font-size: 2.6rem; color: var(--gold); }
+  #countdown { font-size: 3rem; letter-spacing: .05em; margin-top: 8px; }
+  #countdown.ringing { color: var(--berry); animation: blink .5s infinite; }
+  @keyframes blink { 50% { opacity: .2; } }
+  .bigbtn {
+    font-size: 1.35rem; background: var(--gold); color: var(--ink);
+    padding: 13px 34px; border-radius: 999px; box-shadow: 0 5px 0 #c9922a; margin: 8px;
+  }
+  .bigbtn:active { transform: translateY(3px); box-shadow: 0 2px 0 #c9922a; }
+  .bigbtn.quiet { background: rgba(255,255,255,.2); color: var(--white); box-shadow: 0 5px 0 rgba(0,0,0,.3); }
+  .hint { font-size: .85rem; opacity: .7; text-align: center; max-width: 320px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<button id="muteBtn" aria-label="Toggle sound">🔊</button>
+
+<!-- ================= MENU ================= -->
+<div class="screen show" id="menu">
+  <h1>Language<span class="spark">RPG</span> ⚔️</h1>
+  <p class="tagline">Read, spell, and beat the monsters!</p>
+
+  <p class="pick-label">Pick your quest:</p>
+  <div class="track-grid" id="trackGrid">
+    <button class="track-card" data-track="letters">
+      <span class="big">🔠</span><span class="name">Letter Hunt</span>
+      <span class="sub">Hear it, find the letter</span>
+    </button>
+    <button class="track-card" data-track="builder">
+      <span class="big">🧱</span><span class="name">Word Builder</span>
+      <span class="sub">Spell it with blocks</span>
+    </button>
+    <button class="track-card" data-track="sight">
+      <span class="big">⭐</span><span class="name">Sight Words</span>
+      <span class="sub">Hear it, tap the word</span>
+    </button>
+    <button class="track-card" data-track="read">
+      <span class="big">🖼️</span><span class="name">Read It!</span>
+      <span class="sub">Read it, tap the picture</span>
+    </button>
+  </div>
+
+  <p class="pick-label">Pick your speed:</p>
+  <div class="mode-row" id="modeRow">
+    <button class="mode-pill" data-mode="easy"><span class="big">🐢</span>Easy</button>
+    <button class="mode-pill" data-mode="normal"><span class="big">🐰</span>Normal</button>
+    <button class="mode-pill" data-mode="expert"><span class="big">🦅</span>Expert</button>
+  </div>
+
+  <button id="startBtn" disabled>START!</button>
+</div>
+
+<!-- ================= GAME ================= -->
+<div class="screen" id="game">
+  <div id="foeArea">
+    <span id="foeSprite">👾</span>
+    <div id="foeName">Pixel Imp</div>
+    <div class="hpbar"><div id="foeHp"></div></div>
+  </div>
+
+  <div id="hearts">❤️❤️❤️❤️❤️</div>
+
+  <div id="qCard">
+    <div id="qPrompt">Find the letter!</div>
+    <div id="qBig">🐱</div>
+    <button id="sayBtn" aria-label="Say it again">🔊</button>
+  </div>
+
+  <div id="timerWrap"><div id="timerFill"></div><div id="fastMark"></div></div>
+
+  <div id="answers"></div>
+  <div id="feedback"></div>
+</div>
+
+<!-- ================= WIN ================= -->
+<div class="screen" id="win">
+  <div class="endTitle">VICTORY! 🏆</div>
+  <div class="endEmoji">🎉⭐🎉</div>
+  <p class="endMsg">You beat every monster!</p>
+  <div class="rewardBox">
+    <div>You earned</div>
+    <div class="mins"><span id="earnedMins">7</span> minutes</div>
+    <div>of iPad game time!</div>
+    <div id="countdown"></div>
+    <button class="bigbtn" id="timerBtn">Start the timer</button>
+    <button class="bigbtn" id="stopAlarmBtn" style="display:none">Stop alarm</button>
+    <p class="hint">Keep this screen open so the timer can ring — or ask Siri to set a timer!</p>
+  </div>
+  <button class="bigbtn quiet" id="winAgainBtn">Play again</button>
+</div>
+
+<!-- ================= LOSE ================= -->
+<div class="screen" id="lose">
+  <div class="endTitle">Oh no!</div>
+  <div class="endEmoji">💫</div>
+  <p class="endMsg">The monsters got you this time.<br>You were SO close — try again!</p>
+  <button class="bigbtn" id="loseAgainBtn">Try again!</button>
+</div>
+
+<!-- Parent-recorded voice clips, generated by record.html. Optional:
+     a 404 here is harmless — the game falls back to speechSynthesis. -->
+<script src="voice.js"></script>
+
+<script>
+'use strict';
+
+/* ==================================================================
+   Sound — all SFX synthesized with Web Audio. No files to host.
+   ================================================================== */
+const Sound = {
+  ctx: null, muted: localStorage.getItem('langrpg_muted') === '1',
+  alarmTimer: null,
+
+  unlock() {  // call on first user gesture (autoplay rules)
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) this.ctx = new AC();
+    }
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+  },
+
+  // one tone: frequency, duration, type, volume, start-delay
+  tone(freq, dur, type = 'square', vol = 0.15, delay = 0) {
+    if (this.muted || !this.ctx) return;
+    const t = this.ctx.currentTime + delay;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type; osc.frequency.setValueAtTime(freq, t);
+    gain.gain.setValueAtTime(vol, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(gain).connect(this.ctx.destination);
+    osc.start(t); osc.stop(t + dur);
+  },
+
+  click()    { this.tone(600, .06, 'square', .08); },
+  tap()      { this.tone(880, .08, 'triangle', .12); },
+  hit()      { this.tone(220, .12, 'sawtooth', .2); this.tone(440, .1, 'square', .15, .06); },
+  superHit() { [660, 880, 1100, 1320].forEach((f, i) => this.tone(f, .12, 'square', .18, i * .07)); },
+  hurt()     { this.tone(160, .25, 'sawtooth', .2); this.tone(110, .3, 'sawtooth', .15, .1); },
+  wrong()    { this.tone(300, .18, 'triangle', .12); this.tone(240, .25, 'triangle', .12, .18); },
+  ko()       { [523, 659, 784, 1047].forEach((f, i) => this.tone(f, .14, 'triangle', .16, i * .09)); },
+  victory()  { [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => this.tone(f, .2, 'triangle', .16, i * .14)); },
+  gameover() { [392, 330, 262, 196].forEach((f, i) => this.tone(f, .3, 'triangle', .14, i * .25)); },
+
+  startAlarm() {
+    this.stopAlarm();
+    const beep = () => { this.tone(880, .25, 'square', .22); this.tone(660, .25, 'square', .22, .3); };
+    beep();
+    this.alarmTimer = setInterval(beep, 800);
+  },
+  stopAlarm() { if (this.alarmTimer) { clearInterval(this.alarmTimer); this.alarmTimer = null; } }
+};
+
+/* ==================================================================
+   Speech — the game's voice, via the browser's built-in
+   speechSynthesis. Free, offline-friendly, no API keys, no files.
+   ================================================================== */
+const Speech = {
+  voice: null, ok: 'speechSynthesis' in window,
+
+  init() {
+    if (!this.ok) return;
+    const pick = () => {
+      const vs = speechSynthesis.getVoices().filter(v => v.lang && v.lang.startsWith('en'));
+      // prefer a natural/local voice when the OS offers one
+      this.voice = vs.find(v => /samantha|google us english|natural/i.test(v.name)) || vs[0] || null;
+    };
+    pick();
+    speechSynthesis.onvoiceschanged = pick;
+  },
+
+  say(text, rate = 0.85) {
+    if (!this.ok || Sound.muted) return;
+    speechSynthesis.cancel();  // never overlap
+    const u = new SpeechSynthesisUtterance(text);
+    if (this.voice) u.voice = this.voice;
+    u.rate = rate; u.pitch = 1.05;
+    speechSynthesis.speak(u);
+  }
+};
+
+/* ==================================================================
+   Voice — the game's REAL voice: clips of a parent reading the
+   prompts, recorded once with record.html into voice.js (data URIs,
+   so it works from file:// too). Robot TTS above is only the
+   fallback for clips that haven't been recorded yet.
+   ================================================================== */
+const Voice = {
+  clips: window.VOICE_CLIPS || {},
+  el: null, queue: [],
+
+  unlock() {  // create + unlock one reusable <audio> inside a user gesture
+    if (this.el) return;
+    this.el = new Audio();
+    // a near-empty wav; a successful play() here unlocks the element on iOS
+    this.el.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
+    this.el.play().catch(() => {});
+    this.el.onended = () => this.playNext();
+  },
+
+  // play recorded clips in order; if any is missing, speak the fallback text
+  play(ids, fallbackText) {
+    if (Sound.muted) return;
+    this.stop();
+    if (!this.el || !ids.every(id => this.clips[id])) {
+      Speech.say(fallbackText);
+      return;
+    }
+    this.queue = ids.slice();
+    this.playNext();
+  },
+
+  playNext() {
+    if (!this.queue.length) return;
+    this.el.src = this.clips[this.queue.shift()];
+    this.el.play().catch(() => {});
+  },
+
+  stop() {
+    this.queue = [];
+    if (this.el) this.el.pause();
+    if (Speech.ok) speechSynthesis.cancel();
+  }
+};
+
+/* ==================================================================
+   Content — emoji are the art, so there are no images to host.
+   ================================================================== */
+
+// Letter Hunt: every letter with a cue word + emoji ("B as in ball")
+const LETTERS = [
+  ['A','apple','🍎'],['B','ball','⚽'],['C','cat','🐱'],['D','dog','🐶'],
+  ['E','elephant','🐘'],['F','fish','🐟'],['G','grapes','🍇'],['H','hat','🎩'],
+  ['I','ice','🧊'],['J','juice','🧃'],['K','kite','🪁'],['L','lion','🦁'],
+  ['M','moon','🌙'],['N','nose','👃'],['O','octopus','🐙'],['P','pig','🐷'],
+  ['Q','queen','👸'],['R','rainbow','🌈'],['S','sun','☀️'],['T','tiger','🐯'],
+  ['U','umbrella','☂️'],['V','volcano','🌋'],['W','whale','🐳'],['X','x-ray','🩻'],
+  ['Y','yo-yo','🪀'],['Z','zebra','🦓'],
+];
+
+// Word Builder + Read It!: simple 3-letter words that have a clear emoji
+const WORDS = [
+  ['cat','🐱'],['dog','🐶'],['sun','☀️'],['hat','🎩'],['pig','🐷'],['cup','☕'],
+  ['bed','🛏️'],['fox','🦊'],['bug','🐛'],['ant','🐜'],['cow','🐮'],['hen','🐓'],
+  ['box','📦'],['car','🚗'],['bee','🐝'],['egg','🥚'],['key','🔑'],['bat','🦇'],
+  ['owl','🦉'],['map','🗺️'],['pen','🖊️'],['bus','🚌'],['pie','🥧'],['van','🚐'],
+  ['web','🕸️'],['nut','🥜'],
+];
+
+// Sight Words: Dolch pre-primer core
+const SIGHT = ['the','a','and','to','in','is','it','you','see','we',
+               'can','like','go','my','me','at','up','no','so','on',
+               'big','red','run','play'];
+
+// Foes: escalating HP; last one is the boss
+const FOES = [
+  { emoji: '🐌', name: 'Slow Slime',    hp: 3 },
+  { emoji: '👾', name: 'Pixel Imp',     hp: 3 },
+  { emoji: '👻', name: 'Giggly Ghost',  hp: 4 },
+  { emoji: '🦖', name: 'Chompy Rex',    hp: 5 },
+  { emoji: '🐉', name: 'The Big Dragon',hp: 6 },
+];
+
+// Modes: `total` = seconds on the bar, `fast` = double-hit window,
+// `penalty` = does timing out let the foe attack? (never on Easy)
+const MODES = {
+  easy:   { total: 45, fast: 12, penalty: false },
+  normal: { total: 25, fast: 8,  penalty: true  },
+  expert: { total: 15, fast: 5,  penalty: true  },
+};
+
+const PLAYER_HP = 5;
+
+/* ==================================================================
+   Helpers
+   ================================================================== */
+const $ = id => document.getElementById(id);
+const rand = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const shuffle = arr => {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+// draw items without repeats until the pool runs dry, then reshuffle
+function makeDeck(pool) {
+  let deck = shuffle(pool);
+  return () => { if (!deck.length) deck = shuffle(pool); return deck.pop(); };
+}
+
+/* ==================================================================
+   State
+   ================================================================== */
+const state = {
+  track: null, mode: null,
+  foeIdx: 0, foeHp: 0, playerHp: PLAYER_HP,
+  question: null,          // current question object
+  answered: false,         // lock input while resolving
+  timerId: null, timeLeft: 0, inFastZone: false,
+  draw: null,              // deck function for current track
+  earnedMins: 0,
+  rewardId: null, rewardEnd: 0,
+};
+
+/* ==================================================================
+   Screens
+   ================================================================== */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('show'));
+  $(id).classList.add('show');
+}
+
+/* ==================================================================
+   Menu wiring
+   ================================================================== */
+document.querySelectorAll('#trackGrid .track-card').forEach(btn => {
+  btn.addEventListener('click', () => {
+    Sound.unlock(); Sound.click();
+    document.querySelectorAll('.track-card').forEach(b => b.classList.remove('sel'));
+    btn.classList.add('sel');
+    state.track = btn.dataset.track;
+    updateStart();
+  });
+});
+document.querySelectorAll('#modeRow .mode-pill').forEach(btn => {
+  btn.addEventListener('click', () => {
+    Sound.unlock(); Sound.click();
+    document.querySelectorAll('.mode-pill').forEach(b => b.classList.remove('sel'));
+    btn.classList.add('sel');
+    state.mode = btn.dataset.mode;
+    updateStart();
+  });
+});
+function updateStart() { $('startBtn').disabled = !(state.track && state.mode); }
+
+$('startBtn').addEventListener('click', () => {
+  Sound.unlock(); Sound.click();
+  Voice.unlock();
+  Speech.init();
+  startGame();
+});
+
+$('muteBtn').addEventListener('click', () => {
+  Sound.muted = !Sound.muted;
+  localStorage.setItem('langrpg_muted', Sound.muted ? '1' : '0');
+  $('muteBtn').textContent = Sound.muted ? '🔇' : '🔊';
+  if (Sound.muted) Voice.stop();
+});
+$('muteBtn').textContent = Sound.muted ? '🔇' : '🔊';
+
+/* ==================================================================
+   Game flow
+   ================================================================== */
+function startGame() {
+  clearRewardTimer();
+  state.foeIdx = 0;
+  state.playerHp = PLAYER_HP;
+  state.draw = makeDeck(
+    state.track === 'letters' ? LETTERS :
+    state.track === 'sight'   ? SIGHT   : WORDS);
+  showScreen('game');
+  spawnFoe();
+}
+
+function spawnFoe() {
+  const foe = FOES[state.foeIdx];
+  state.foeHp = foe.hp;
+  const sprite = $('foeSprite');
+  sprite.textContent = foe.emoji;
+  sprite.className = '';
+  $('foeName').textContent = foe.name;
+  renderHp();
+  newQuestion();
+}
+
+function renderHp() {
+  const foe = FOES[state.foeIdx];
+  $('foeHp').style.width = (100 * Math.max(0, state.foeHp) / foe.hp) + '%';
+  $('hearts').textContent = '❤️'.repeat(Math.max(0, state.playerHp)) +
+                            '🤍'.repeat(PLAYER_HP - Math.max(0, state.playerHp));
+}
+
+/* ==================================================================
+   Questions — one maker per track. Each returns:
+   { prompt, big, choices?, isBlocks?, word?, sayIt(), check(pick) }
+   ================================================================== */
+
+function makeLetterQ() {
+  const [letter, cue, emoji] = state.draw();
+  const decoys = shuffle(LETTERS.filter(l => l[0] !== letter)).slice(0, 3).map(l => l[0]);
+  return {
+    prompt: 'Find the letter!',
+    big: emoji,
+    choices: shuffle([letter, ...decoys]),
+    answer: letter,
+    isBlocks: true,
+    sayIt: () => Voice.play(['L_' + letter], `Find the letter ${letter}! ${letter}, as in ${cue}!`),
+  };
+}
+
+function makeBuilderQ() {
+  const [word, emoji] = state.draw();
+  const decoys = shuffle('abcdefghijklmnopqrstuvwxyz'.split('')
+    .filter(c => !word.includes(c))).slice(0, 2);
+  return {
+    prompt: 'Spell it with blocks!',
+    big: emoji,
+    word,
+    bank: shuffle([...word, ...decoys]),
+    isBuilder: true,
+    sayIt: () => Voice.play(['P_spell', 'W_' + word], `Spell the word ${word}! ${word}!`),
+  };
+}
+
+function makeSightQ() {
+  const word = state.draw();
+  const decoys = shuffle(SIGHT.filter(w => w !== word)).slice(0, 2);
+  return {
+    prompt: 'Find the word!',
+    big: '⭐',
+    choices: shuffle([word, ...decoys]),
+    answer: word,
+    isWords: true,
+    sayIt: () => Voice.play(['P_findword', 'S_' + word], `Find the word... ${word}!`),
+  };
+}
+
+function makeReadQ() {
+  const [word, emoji] = state.draw();
+  const decoys = shuffle(WORDS.filter(w => w[0] !== word)).slice(0, 3).map(w => w[1]);
+  return {
+    prompt: 'Read it! Tap the picture!',
+    big: word,
+    choices: shuffle([emoji, ...decoys]),
+    answer: emoji,
+    word,
+    isPics: true,
+    sayIt: null,   // no audio hint — this track is real reading!
+  };
+}
+
+const MAKERS = { letters: makeLetterQ, builder: makeBuilderQ, sight: makeSightQ, read: makeReadQ };
+
+/* ==================================================================
+   Render the question + answer area
+   ================================================================== */
+function newQuestion() {
+  const q = state.question = MAKERS[state.track]();
+  state.answered = false;
+  $('feedback').textContent = '';
+  $('qPrompt').textContent = q.prompt;
+  $('sayBtn').style.display = q.sayIt ? '' : 'none';
+
+  const answers = $('answers');
+  answers.innerHTML = '';
+
+  if (q.isBuilder) {
+    // dashed slots in the card; a bank of ABC blocks below
+    q.filled = [];
+    renderSlots();
+    q.bank.forEach((ch, i) => {
+      const b = blockBtn(ch);
+      b.addEventListener('click', () => {
+        if (state.answered || q.filled.length >= q.word.length) return;
+        Sound.tap();
+        b.classList.add('used', 'pop');
+        q.filled.push({ ch, btn: b });
+        renderSlots();
+        if (q.filled.length === q.word.length) checkBuilder();
+      });
+      answers.appendChild(b);
+    });
+  } else {
+    $('qBig').textContent = q.big;
+    q.choices.forEach(choice => {
+      let el;
+      if (q.isBlocks)      el = blockBtn(choice);
+      else if (q.isPics)   { el = document.createElement('button'); el.className = 'picbtn'; el.textContent = choice; }
+      else                 { el = document.createElement('button'); el.className = 'wordcard'; el.textContent = choice; }
+      el.addEventListener('click', () => pickAnswer(el, choice === q.answer));
+      answers.appendChild(el);
+    });
+  }
+
+  startTimer();
+  if (q.sayIt) setTimeout(q.sayIt, 250);
+}
+
+// an ABC block, tinted by its letter's place in the alphabet
+function blockBtn(ch) {
+  const b = document.createElement('button');
+  b.className = 'block';
+  b.textContent = ch.toUpperCase();
+  const idx = ch.toUpperCase().charCodeAt(0) - 65;
+  b.style.setProperty('--h', (idx * 14) % 360);
+  return b;
+}
+
+function renderSlots() {
+  const q = state.question;
+  $('qBig').innerHTML = q.big + '&nbsp; ' + q.word.split('').map((_, i) => {
+    const f = q.filled[i];
+    return `<span class="slot${f ? ' filled' : ''}">${f ? f.ch.toUpperCase() : ''}</span>`;
+  }).join('');
+  // tapping a filled slot puts the block back
+  $('qBig').querySelectorAll('.slot.filled').forEach((el, i) => {
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', () => {
+      if (state.answered) return;
+      Sound.click();
+      const removed = q.filled.splice(i, 1)[0];
+      removed.btn.classList.remove('used', 'pop');
+      renderSlots();
+    });
+  });
+}
+
+/* ==================================================================
+   Answering
+   ================================================================== */
+function checkBuilder() {
+  const q = state.question;
+  const built = q.filled.map(f => f.ch).join('');
+  if (built === q.word) {
+    resolveCorrect();
+  } else {
+    // gently put all the blocks back and let them retry costs a foe hit
+    resolveWrong(`It spells ${q.word.toUpperCase()} — try again!`);
+    q.filled.forEach(f => f.btn.classList.remove('used', 'pop'));
+    q.filled = [];
+  }
+}
+
+function pickAnswer(el, correct) {
+  if (state.answered) return;
+  if (correct) {
+    el.classList.add('right');
+    resolveCorrect();
+  } else {
+    el.classList.add('wrongPick');
+    resolveWrong();
+  }
+}
+
+function resolveCorrect() {
+  state.answered = true;
+  stopTimer();
+  const dbl = state.inFastZone;
+  const q = state.question;
+  // reinforce by saying the word after a correct answer (dad's voice if recorded)
+  const praiseId  = dbl ? 'P_double' : 'P_great';
+  const praiseTxt = dbl ? 'Double hit!' : 'Great job!';
+  if (q.word)         Voice.play(['W_' + q.word, praiseId], `${q.word}! ${praiseTxt}`);
+  else if (q.isWords) Voice.play(['S_' + q.answer, praiseId], `${q.answer}! ${praiseTxt}`);
+  else                Voice.play([praiseId], praiseTxt);
+  playerAttack(dbl);
+}
+
+function resolveWrong(msg) {
+  state.answered = true;
+  stopTimer();
+  Sound.wrong();
+  const q = state.question;
+  const reveal = q.isBuilder ? '' :
+    q.isPics ? `It was ${q.word} ${q.answer}` : `It was ${String(q.answer).toUpperCase()}`;
+  $('feedback').textContent = msg || `Almost! ${reveal}`;
+  // say the right answer out loud (after the buzzer), except on letters
+  // where there's no word clip to play
+  if (q.isPics || q.isBuilder)
+    setTimeout(() => Voice.play(['P_itwas', 'W_' + q.word], `It was ${q.word}`), 450);
+  else if (q.isWords)
+    setTimeout(() => Voice.play(['P_itwas', 'S_' + q.answer], `It was ${q.answer}`), 450);
+  setTimeout(() => foeAttack(), 1600);
+}
+
+/* ==================================================================
+   Combat
+   ================================================================== */
+function playerAttack(double) {
+  const dmg = double ? 2 : 1;
+  state.foeHp -= dmg;
+  double ? Sound.superHit() : Sound.hit();
+
+  const sprite = $('foeSprite');
+  sprite.classList.remove('hit'); void sprite.offsetWidth;  // restart animation
+  sprite.classList.add('hit');
+
+  const area = $('foeArea');
+  const burst = document.createElement('span');
+  burst.className = 'burst';
+  burst.textContent = double ? '💥⭐💥' : '💥';
+  area.appendChild(burst);
+  const num = document.createElement('span');
+  num.className = 'dmgnum';
+  num.textContent = double ? 'DOUBLE!' : '-1';
+  area.appendChild(num);
+  setTimeout(() => { burst.remove(); num.remove(); }, 900);
+
+  $('feedback').textContent = double ? '⭐ DOUBLE HIT! ⭐' : 'Great hit!';
+  renderHp();
+
+  if (state.foeHp <= 0) {
+    setTimeout(() => {
+      Sound.ko();
+      sprite.classList.remove('hit');
+      sprite.classList.add('ko');
+      setTimeout(nextFoeOrWin, 900);
+    }, 500);
+  } else {
+    setTimeout(newQuestion, 1100);
+  }
+}
+
+function foeAttack() {
+  state.playerHp -= 1;
+  Sound.hurt();
+  document.body.classList.remove('playerHit'); void document.body.offsetWidth;
+  document.body.classList.add('playerHit');
+  renderHp();
+  if (state.playerHp <= 0) {
+    setTimeout(gameOver, 700);
+  } else {
+    setTimeout(newQuestion, 900);
+  }
+}
+
+function nextFoeOrWin() {
+  state.foeIdx++;
+  if (state.foeIdx >= FOES.length) {
+    winGame();
+  } else {
+    $('feedback').textContent = '';
+    spawnFoe();
+  }
+}
+
+/* ==================================================================
+   Timer — gold fast zone at the start = double damage window
+   ================================================================== */
+function startTimer() {
+  stopTimer();
+  const mode = MODES[state.mode];
+  state.timeLeft = mode.total;
+  state.inFastZone = true;
+  $('fastMark').style.left = (100 * (mode.total - mode.fast) / mode.total) + '%';
+
+  state.timerId = setInterval(() => {
+    state.timeLeft -= 0.1;
+    const pct = Math.max(0, state.timeLeft / mode.total * 100);
+    state.inFastZone = (mode.total - state.timeLeft) < mode.fast;
+    const fill = $('timerFill');
+    fill.style.width = pct + '%';
+    fill.classList.toggle('fastzone', state.inFastZone);
+
+    if (state.timeLeft <= 0) {
+      stopTimer();
+      if (mode.penalty && !state.answered) {
+        state.answered = true;
+        $('feedback').textContent = 'Too slow!';
+        Sound.wrong();
+        setTimeout(() => foeAttack(), 700);
+      }
+      // Easy mode: nothing bad happens — the bar just sits empty
+    }
+  }, 100);
+}
+
+function stopTimer() {
+  if (state.timerId) { clearInterval(state.timerId); state.timerId = null; }
+}
+
+/* ==================================================================
+   Win / lose + the iPad-time reward timer
+   ================================================================== */
+function winGame() {
+  stopTimer();
+  Sound.victory();
+  Voice.play(['P_win'], 'Victory! You beat every monster! Amazing reading!');
+  state.earnedMins = rand(5, 10);
+  $('earnedMins').textContent = state.earnedMins;
+  $('countdown').textContent = '';
+  $('countdown').classList.remove('ringing');
+  $('timerBtn').style.display = '';
+  $('stopAlarmBtn').style.display = 'none';
+  showScreen('win');
+}
+
+function gameOver() {
+  stopTimer();
+  Sound.gameover();
+  Voice.play(['P_lose'], 'Oh no! Try again — you can do it!');
+  showScreen('lose');
+}
+
+function startRewardTimer() {
+  clearRewardTimer();
+  // track a wall-clock end time so a delayed tick can't drift the total
+  state.rewardEnd = Date.now() + state.earnedMins * 60 * 1000;
+  $('timerBtn').style.display = 'none';
+  const tick = () => {
+    const ms = state.rewardEnd - Date.now();
+    if (ms <= 0) { ringTimer(); return; }
+    const s = Math.ceil(ms / 1000);
+    $('countdown').textContent =
+      Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  };
+  tick();
+  state.rewardId = setInterval(tick, 250);
+}
+
+function ringTimer() {
+  clearRewardTimer();
+  $('countdown').textContent = "TIME'S UP!";
+  $('countdown').classList.add('ringing');
+  $('stopAlarmBtn').style.display = '';
+  Sound.startAlarm();
+}
+
+function clearRewardTimer() {
+  if (state.rewardId) { clearInterval(state.rewardId); state.rewardId = null; }
+  Sound.stopAlarm();
+}
+
+$('timerBtn').addEventListener('click', () => { Sound.click(); startRewardTimer(); });
+$('stopAlarmBtn').addEventListener('click', () => {
+  Sound.stopAlarm();
+  $('stopAlarmBtn').style.display = 'none';
+});
+$('winAgainBtn').addEventListener('click', () => { Sound.click(); clearRewardTimer(); showScreen('menu'); });
+$('loseAgainBtn').addEventListener('click', () => { Sound.click(); showScreen('menu'); });
+
+$('sayBtn').addEventListener('click', () => {
+  Sound.unlock();
+  if (state.question && state.question.sayIt) state.question.sayIt();
+});
+</script>
+</body>
+</html>

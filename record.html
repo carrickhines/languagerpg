@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LanguageRPG — Voice Studio</title>
+<style>
+  :root {
+    --sky:   #3b2d6e;
+    --sky2:  #6a4fc9;
+    --card:  #fff9ec;
+    --ink:   #2b2350;
+    --gold:  #ffc53d;
+    --grass: #58c15c;
+    --berry: #ff5d73;
+    --white: #fffdf7;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Chalkboard SE', 'Comic Sans MS', ui-rounded, 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(180deg, var(--sky), var(--sky2));
+    color: var(--white);
+    min-height: 100dvh;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  main { width: 100%; max-width: 640px; padding: 16px 16px 110px; }
+  h1 { margin-top: 24px; text-align: center; text-shadow: 0 3px 0 rgba(0,0,0,.25); }
+  .intro {
+    background: rgba(255,255,255,.12); border-radius: 16px;
+    padding: 14px 18px; margin: 16px 0; font-size: .95rem; line-height: 1.5;
+  }
+  .intro b { color: var(--gold); }
+  h2 { margin: 26px 0 10px; font-size: 1.2rem; color: var(--gold); }
+
+  .row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card); color: var(--ink);
+    border-radius: 14px; padding: 8px 12px; margin-bottom: 8px;
+  }
+  .row .txt { flex: 1; font-size: 1.05rem; }
+  .row button {
+    font-family: inherit; font-size: 1.3rem; border: none; cursor: pointer;
+    width: 46px; height: 46px; border-radius: 50%;
+    background: rgba(43,35,80,.08);
+  }
+  .row button:disabled { opacity: .3; cursor: default; }
+  .row button.live { background: var(--berry); animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { transform: scale(1.12); } }
+  .row .ok { width: 28px; font-size: 1.2rem; text-align: center; }
+
+  footer {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--ink); padding: 14px;
+    display: flex; align-items: center; justify-content: center; gap: 18px;
+    box-shadow: 0 -4px 12px rgba(0,0,0,.3);
+  }
+  #progress { font-size: 1.1rem; }
+  #downloadBtn {
+    font-family: inherit; font-size: 1.15rem; border: none; cursor: pointer;
+    background: var(--gold); color: var(--ink);
+    padding: 12px 26px; border-radius: 999px; box-shadow: 0 4px 0 #c9922a;
+  }
+  #downloadBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #c9922a; }
+</style>
+</head>
+<body>
+
+<!-- If a voice.js already exists next to this page, its clips prefill below
+     so you can record in more than one sitting. A 404 here is harmless. -->
+<script src="voice.js"></script>
+
+<main>
+  <h1>🎙️ Voice Studio</h1>
+  <div class="intro">
+    Record <b>your own voice</b> for the game — the best narrator a kid can have.
+    <br><br>
+    1. Tap 🎙️ on a line, <b>read it out loud</b>, tap ⏹ to stop (auto-stops at 6s).<br>
+    2. Tap ▶ to check it; re-record any time.<br>
+    3. Tap <b>Download voice.js</b> and put the file in the same folder as
+    <b>index.html</b> (commit it to the repo for GitHub Pages).<br><br>
+    Tip: record on the device the kids play on (e.g. the iPad, via the live
+    site) for the most compatible audio. Use the built-in or a wired mic —
+    <b>Bluetooth headsets record in telephone quality</b>. You can stop and
+    come back — already recorded lines show ✅ and are kept when you download
+    again.
+  </div>
+  <div id="sections"></div>
+</main>
+
+<footer>
+  <span id="progress"></span>
+  <button id="downloadBtn">Download voice.js</button>
+</footer>
+
+<script>
+'use strict';
+
+/* Keep these three lists in sync with index.html */
+const LETTERS = [
+  ['A','apple'],['B','ball'],['C','cat'],['D','dog'],['E','elephant'],
+  ['F','fish'],['G','grapes'],['H','hat'],['I','ice'],['J','juice'],
+  ['K','kite'],['L','lion'],['M','moon'],['N','nose'],['O','octopus'],
+  ['P','pig'],['Q','queen'],['R','rainbow'],['S','sun'],['T','tiger'],
+  ['U','umbrella'],['V','volcano'],['W','whale'],['X','x-ray'],
+  ['Y','yo-yo'],['Z','zebra'],
+];
+const WORDS = ['cat','dog','sun','hat','pig','cup','bed','fox','bug','ant',
+               'cow','hen','box','car','bee','egg','key','bat','owl','map',
+               'pen','bus','pie','van','web','nut'];
+const SIGHT = ['the','a','and','to','in','is','it','you','see','we',
+               'can','like','go','my','me','at','up','no','so','on',
+               'big','red','run','play'];
+
+const SECTIONS = [
+  { title: 'Game phrases', items: [
+    { id: 'P_spell',    text: 'Spell this word!' },
+    { id: 'P_findword', text: 'Find the word!' },
+    { id: 'P_great',    text: 'Great job!' },
+    { id: 'P_double',   text: 'Double hit!' },
+    { id: 'P_itwas',    text: 'It was...' },
+    { id: 'P_win',      text: 'Victory! You beat every monster!' },
+    { id: 'P_lose',     text: 'Oh no! Try again — you can do it!' },
+  ]},
+  { title: 'Letters (say the whole line)', items:
+    LETTERS.map(([l, cue]) => ({ id: 'L_' + l, text: `Find the letter ${l}! ${l}, as in ${cue}!` })) },
+  { title: 'Words (just the word)', items:
+    WORDS.map(w => ({ id: 'W_' + w, text: w })) },
+  { title: 'Sight words (just the word)', items:
+    SIGHT.map(w => ({ id: 'S_' + w, text: w })) },
+];
+const ALL = SECTIONS.flatMap(s => s.items);
+
+// start from whatever voice.js already holds, so sessions are incremental
+const clips = Object.assign({}, window.VOICE_CLIPS || {});
+
+/* ---------- build the rows ---------- */
+const sectionsEl = document.getElementById('sections');
+SECTIONS.forEach(sec => {
+  const h = document.createElement('h2');
+  h.textContent = sec.title;
+  sectionsEl.appendChild(h);
+  sec.items.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML =
+      `<button class="rec" aria-label="Record">🎙️</button>` +
+      `<button class="play" aria-label="Play" disabled>▶</button>` +
+      `<span class="txt">${item.text}</span><span class="ok"></span>`;
+    row.querySelector('.rec').addEventListener('click', e => toggleRecord(item.id, e.currentTarget));
+    row.querySelector('.play').addEventListener('click', () => new Audio(clips[item.id]).play());
+    row.id = 'row_' + item.id;
+    sectionsEl.appendChild(row);
+    refreshRow(item.id);
+  });
+});
+refreshProgress();
+
+function refreshRow(id) {
+  const row = document.getElementById('row_' + id);
+  const has = !!clips[id];
+  row.querySelector('.play').disabled = !has;
+  row.querySelector('.ok').textContent = has ? '✅' : '';
+}
+function refreshProgress() {
+  const done = ALL.filter(i => clips[i.id]).length;
+  document.getElementById('progress').textContent = `${done} / ${ALL.length} recorded`;
+}
+
+/* ---------- recording (MediaRecorder, built into the browser) ---------- */
+// mp4/AAC first: it plays back everywhere, including iPads
+const MIME = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm']
+  .find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m));
+
+let stream = null, recorder = null, activeId = null, chunks = [], stopTimer = null;
+
+async function toggleRecord(id, btn) {
+  if (activeId === id) { recorder.stop(); return; }   // second tap = stop
+  if (activeId) return;                               // one at a time
+
+  if (!stream) {
+    try {
+      // the defaults (echo cancellation, noise suppression, auto-gain) are
+      // tuned for video calls and mangle a clean read-aloud recording
+      stream = await navigator.mediaDevices.getUserMedia({ audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        channelCount: 1,
+      } });
+    } catch (e) {
+      alert('Microphone access is blocked. Allow the mic for this page, then try again.');
+      return;
+    }
+  }
+
+  activeId = id;
+  chunks = [];
+  recorder = new MediaRecorder(stream,
+    MIME ? { mimeType: MIME, audioBitsPerSecond: 128000 } : undefined);
+  recorder.ondataavailable = e => chunks.push(e.data);
+  recorder.onstop = () => {
+    clearTimeout(stopTimer);
+    btn.textContent = '🎙️';
+    btn.classList.remove('live');
+    const blob = new Blob(chunks, { type: recorder.mimeType });
+    const fr = new FileReader();
+    fr.onload = () => {           // store as a data URI → one portable JS file
+      clips[id] = fr.result;
+      activeId = null;
+      refreshRow(id);
+      refreshProgress();
+    };
+    fr.readAsDataURL(blob);
+  };
+  recorder.start();
+  btn.textContent = '⏹';
+  btn.classList.add('live');
+  stopTimer = setTimeout(() => { if (activeId === id) recorder.stop(); }, 6000);
+}
+
+/* ---------- download voice.js ---------- */
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  const content = '// Generated by record.html — keep next to index.html.\n' +
+                  'window.VOICE_CLIPS = ' + JSON.stringify(clips) + ';\n';
+  const blob = new Blob([content], { type: 'text/javascript' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'voice.js';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+</script>
+</body>
+</html>
