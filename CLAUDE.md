@@ -212,9 +212,11 @@ the looping "time's up" alarm for the iPad-game-time reward.
 
 ## Visual design — shared system with the math game
 
-The UI deliberately matches the family's **Math RPG** game so the two feel
+The UI deliberately matches the family's **Math RPG** game so the games feel
 like siblings (a local copy of that game may sit at `index-ref.html`,
-gitignored, purely as a styling reference). The shared system: a rounded
+gitignored, purely as a styling reference). A third sibling, **Story Quest**
+(a reading-comprehension adventure for the older son), lives at
+https://github.com/carrickhines/storyquest and shares the same system. The shared system: a rounded
 `#app` frame on a dark page, twilight starfield + pink horizon-glow arena,
 glassy dark panels (`--panel`) with backdrop blur, gold gradient buttons with
 a 3D "lip" shadow, rounded display font, HP drawn as countable pips (green
