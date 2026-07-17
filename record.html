@@ -95,7 +95,7 @@
 <script>
 'use strict';
 
-/* Keep these three lists in sync with index.html */
+/* Keep these four lists in sync with index.html */
 const LETTERS = [
   ['A','apple'],['B','ball'],['C','cat'],['D','dog'],['E','elephant'],
   ['F','fish'],['G','grapes'],['H','hat'],['I','ice'],['J','juice'],
@@ -110,11 +110,18 @@ const WORDS = ['cat','dog','sun','hat','pig','cup','bed','fox','bug','ant',
 const SIGHT = ['the','a','and','to','in','is','it','you','see','we',
                'can','like','go','my','me','at','up','no','so','on',
                'big','red','run','play'];
+// Rhyme Time words that aren't already in WORDS or SIGHT (those reuse
+// their W_/S_ clips — no need to record them twice)
+const RHYME_WORDS = ['frog','log','ten','socks','tree','man','pan','star',
+                     'jar','sled','bread','cap','clap','eye','fly','one',
+                     'goat','boat','coat','cake','snake','mouse','house',
+                     'moon','spoon','fish','dish','ring','king'];
 
 const SECTIONS = [
   { title: 'Game phrases', items: [
     { id: 'P_spell',    text: 'Spell this word!' },
     { id: 'P_findword', text: 'Find the word!' },
+    { id: 'P_rhyme',    text: 'What rhymes with...?' },
     { id: 'P_great',    text: 'Great job!' },
     { id: 'P_double',   text: 'Double hit!' },
     { id: 'P_itwas',    text: 'It was...' },
@@ -127,6 +134,8 @@ const SECTIONS = [
     WORDS.map(w => ({ id: 'W_' + w, text: w })) },
   { title: 'Sight words (just the word)', items:
     SIGHT.map(w => ({ id: 'S_' + w, text: w })) },
+  { title: 'Rhyme words (just the word)', items:
+    RHYME_WORDS.map(w => ({ id: 'R_' + w, text: w })) },
 ];
 const ALL = SECTIONS.flatMap(s => s.items);
 

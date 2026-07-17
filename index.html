@@ -714,6 +714,10 @@
         <span class="emoji">🖼️</span>Read It!
         <span class="sub">Read it, tap the picture</span>
       </button>
+      <button class="choice" data-track="rhyme">
+        <span class="emoji">🎵</span>Rhyme Time
+        <span class="sub">Hear it, tap the rhyme</span>
+      </button>
     </div>
 
     <div class="group-label">Big hero quests</div>
@@ -973,6 +977,38 @@ const WORDS = [
 const SIGHT = ['the','a','and','to','in','is','it','you','see','we',
                'can','like','go','my','me','at','up','no','so','on',
                'big','red','run','play'];
+
+// Rhyme Time: families of rhyming words, each with a clear emoji. A question
+// pairs two words from one family (the cue + the answer) and pulls decoy
+// pictures from other families — so families must be complete: never put two
+// words that rhyme into different families, or a decoy could secretly be a
+// right answer. Words already in WORDS/SIGHT reuse their recorded clips;
+// rhyme-only words get R_ clips (keep the extras in sync with record.html).
+const RHYMES = [
+  [['cat','🐱'], ['hat','🎩'], ['bat','🦇']],
+  [['dog','🐶'], ['frog','🐸'], ['log','🪵']],
+  [['hen','🐓'], ['pen','🖊️'], ['ten','🔟']],
+  [['fox','🦊'], ['box','📦'], ['socks','🧦']],
+  [['bee','🐝'], ['key','🔑'], ['tree','🌳']],
+  [['van','🚐'], ['man','👨'], ['pan','🍳']],
+  [['car','🚗'], ['star','⭐'], ['jar','🫙']],
+  [['bed','🛏️'], ['sled','🛷'], ['bread','🍞']],
+  [['map','🗺️'], ['cap','🧢'], ['clap','👏']],
+  [['pie','🥧'], ['eye','👁️'], ['fly','🪰']],
+  [['sun','☀️'], ['run','🏃'], ['one','1️⃣']],
+  [['goat','🐐'], ['boat','⛵'], ['coat','🧥']],
+  [['cake','🎂'], ['snake','🐍']],
+  [['mouse','🐭'], ['house','🏠']],
+  [['moon','🌙'], ['spoon','🥄']],
+  [['fish','🐟'], ['dish','🍽️']],
+  [['ring','💍'], ['king','🤴']],
+];
+
+// find a word's clip wherever it was recorded: the word list, the sight
+// list, or the rhyme-only extras
+const wordClip = w =>
+  WORDS.some(p => p[0] === w) ? 'W_' + w :
+  SIGHT.includes(w)           ? 'S_' + w : 'R_' + w;
 
 /* ------------------------------------------------------------------
    Big-hero tracks (3rd grade): all text on screen, no voice clips
@@ -1381,6 +1417,7 @@ function startGame() {
   state.draw = makeDeck(
     state.track === 'letters' ? LETTERS :
     state.track === 'sight'   ? SIGHT   :
+    state.track === 'rhyme'   ? RHYMES  :
     state.track === 'fixit'   ? FIXIT   :
     state.track === 'forge'   ? FORGE   : WORDS);
   showScreen('game');
@@ -1472,6 +1509,23 @@ function makeReadQ() {
   };
 }
 
+function makeRhymeQ() {
+  const fam = state.draw();
+  const [t, a] = shuffle(fam).slice(0, 2);   // cue word + the rhyming answer
+  const decoys = shuffle(RHYMES.filter(f => f !== fam)).slice(0, 2)
+    .map(f => f[rand(0, f.length - 1)]);     // one picture from 2 other families
+  return {
+    prompt: 'Tap what rhymes!',
+    big: t[1] + ' ' + t[0],
+    choices: shuffle([a, ...decoys].map(p => p[1])),
+    answer: a[1],
+    tWord: t[0], aWord: a[0],
+    tClip: wordClip(t[0]), aClip: wordClip(a[0]),
+    isPics: true, isRhyme: true,
+    sayIt: () => Voice.play(['P_rhyme', wordClip(t[0])], `What rhymes with... ${t[0]}?`),
+  };
+}
+
 function makeFixitQ() {
   const item = state.draw();
   return {
@@ -1495,7 +1549,8 @@ function makeForgeQ() {
 }
 
 const MAKERS = { letters: makeLetterQ, builder: makeBuilderQ, sight: makeSightQ,
-                 read: makeReadQ, fixit: makeFixitQ, forge: makeForgeQ };
+                 read: makeReadQ, rhyme: makeRhymeQ,
+                 fixit: makeFixitQ, forge: makeForgeQ };
 
 /* ==================================================================
    Render the question + answer area
@@ -1729,7 +1784,8 @@ function resolveCorrect() {
   // reinforce by saying the word after a correct answer (dad's voice if recorded)
   const praiseId  = dbl ? 'P_double' : 'P_great';
   const praiseTxt = dbl ? 'Double hit!' : 'Great job!';
-  if (q.word)         Voice.play(['W_' + q.word, praiseId], `${q.word}! ${praiseTxt}`);
+  if (q.isRhyme)      Voice.play([q.tClip, q.aClip, praiseId], `${q.tWord}... ${q.aWord}! ${praiseTxt}`);
+  else if (q.word)    Voice.play(['W_' + q.word, praiseId], `${q.word}! ${praiseTxt}`);
   else if (q.isWords) Voice.play(['S_' + q.answer, praiseId], `${q.answer}! ${praiseTxt}`);
   else                Voice.play([praiseId], praiseTxt);
   playerAttack(dbl);
@@ -1741,11 +1797,14 @@ function resolveWrong(msg) {
   Sound.wrong();
   const q = state.question;
   const reveal = q.isBuilder ? '' :
+    q.isRhyme ? `${q.tWord} rhymes with ${q.aWord} ${q.answer}` :
     q.isPics ? `It was ${q.word} ${q.answer}` : `It was ${String(q.answer).toUpperCase()}`;
   $('feedback').textContent = msg || `Almost! ${reveal}`;
   // say the right answer out loud (after the buzzer), except on letters
   // where there's no word clip to play
-  if (q.isPics || q.isBuilder)
+  if (q.isRhyme)
+    setTimeout(() => Voice.play(['P_itwas', q.aClip], `It was ${q.aWord}`), 450);
+  else if (q.isPics || q.isBuilder)
     setTimeout(() => Voice.play(['P_itwas', 'W_' + q.word], `It was ${q.word}`), 450);
   else if (q.isWords)
     setTimeout(() => Voice.play(['P_itwas', 'S_' + q.answer], `It was ${q.answer}`), 450);

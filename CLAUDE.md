@@ -30,7 +30,7 @@ The game **never listens to the child** — no speech-to-text, no transcription
 service, no API keys, no external services. Instead:
 
 - **The game's voice is the parent's voice.** The game has a *closed
-  vocabulary* (~84 short prompts total), so `record.html` — the "Voice
+  vocabulary* (~113 short prompts total), so `record.html` — the "Voice
   Studio" — lets a parent record every prompt once (~10 min) with the
   browser's built-in `MediaRecorder`, then downloads a single generated
   `voice.js` (clips as base64 data URIs) that sits next to `index.html`. Data
@@ -50,17 +50,20 @@ service, no API keys, no external services. Instead:
   typing, no talking. A 5-year-old can drive everything with one finger.
 
 The clip-id scheme: `L_B` (full letter prompt), `W_cat` (word), `S_the`
-(sight word), `P_*` (game phrases: spell/findword/great/double/itwas/win/lose).
-The content lists (`LETTERS`/`WORDS`/`SIGHT`) are duplicated in `record.html` —
+(sight word), `R_frog` (rhyme-only word), `P_*` (game phrases:
+spell/findword/rhyme/great/double/itwas/win/lose). The content lists
+(`LETTERS`/`WORDS`/`SIGHT`/`RHYME_WORDS`) are duplicated in `record.html` —
 **keep them in sync with `index.html`** when adding content, and re-record the
-new clips.
+new clips. Rhyme Time reuses `W_`/`S_` clips for words that already have them
+(the `wordClip()` helper picks the right prefix), so `RHYME_WORDS` in
+`record.html` holds only the words that appear nowhere else.
 
 Reading *aloud* is the one skill this can't grade; that stays a
 parent-at-bedtime activity by design. Don't add transcription services back.
 
 ## Younger son's tracks (built, in `index.html`)
 
-Four tracks forming a learning ladder toward reading:
+Five tracks forming a learning ladder toward reading:
 
 1. **🔠 Letter Hunt** — letter recognition + initial sounds. TTS says "Find the
    letter B! B, as in ball!", a cue emoji (⚽) shows in the card, and the child
@@ -76,6 +79,17 @@ Four tracks forming a learning ladder toward reading:
 4. **🖼️ Read It!** — true decoding. Shows the *written* word with **no audio
    hint**; the child reads it and taps the matching emoji out of 4. The word
    is spoken *after* answering as reinforcement.
+5. **🎵 Rhyme Time** — phonological awareness (an ear skill, so it pairs with
+   any reading level). The voice asks "What rhymes with... cat?" (🐱 + the
+   printed word shown in the card) and the child taps the rhyming picture out
+   of 3. Content: `RHYMES` — families of rhyming `[word, emoji]` pairs; the
+   cue and answer come from one family, the 2 decoys from other families.
+   **Authoring rules:** families must be complete (two words that rhyme must
+   never sit in different families, or a decoy could secretly be correct),
+   every emoji must be unmistakably nameable by a 5-year-old (the child names
+   the picture in his head to hear the rhyme), and no emoji may repeat across
+   families. The right answer plays back as "cat... hat! Great job!" for
+   reinforcement.
 
 Answer tiles are styled as chunky **ABC blocks**, each tinted its own hue by
 alphabet position — the spiritual sibling of the physical alphabet blocks and
