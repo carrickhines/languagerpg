@@ -116,7 +116,7 @@ has 5 hearts; a normal hit does 1 damage, a double hit 2.
 
 ## Older son's tracks (built, in `index.html`)
 
-Two "big hero" tracks for the 3rd grader. **Key property: they need zero
+Six "big hero" tracks for the 3rd grader. **Key property: they need zero
 voice clips** — a confident reader reads everything from the screen, so
 their content lists live only in `index.html` and never touch `record.html`
 or the closed vocabulary. (The recorded praise clips `P_great`/`P_double`
@@ -142,6 +142,33 @@ his tracks instantly.
    and -ful/-less/-ly/-er/-est/-able/-ness/-y, plus three-part builds.
    **Authoring rule:** only clean joins — the parts must concatenate into
    the real word with no spelling changes (so no `happy + ly`).
+3. **🏷️ Grammar Hunt** — parts of speech. A sentence is shown as tappable
+   word tokens (the shared `renderTapWord` mechanic) and the prompt asks
+   "Tap the verb!" (or noun/adjective/adverb/pronoun). Content: `GRAMMAR`
+   (60 items). **Authoring rule:** the sentence must contain *exactly one*
+   word of the asked class — other classes may repeat freely (helping verbs
+   are fine in a noun question) — and the target token must appear exactly
+   once (Fix It! matching: trailing `.,!?` ignored, case-sensitive).
+4. **🔨 Syllable Smith** — spelling production. A clue is shown ("the day
+   after today") and the child builds the word from syllable chunks
+   (`to`+`mor`+`row`) with misspelled decoy chunks (`more`, `tow`) — the
+   Word Forge mechanic pointed at 3rd-grade spelling words. Chunks tint by
+   first letter (no prefix/root/suffix roles here). Content: `SYLLB`
+   (60 words). **Authoring rules:** parts concatenate exactly into the
+   word; decoys must not equal any part or combine into a correct spelling.
+5. **🎭 Word Twins** — synonyms and antonyms. "Which means the SAME?" /
+   "Which means the OPPOSITE?" with the target word large and 3 word cards.
+   Content: `TWINS` (30 + 30). **Authoring rule:** decoys may be tempting
+   (the antonym is a fine decoy on a synonym question) but never a
+   defensible answer.
+6. **✏️ Mark It!** — punctuation. Two item shapes in `MARKS` (60 items):
+   *end marks* (sentence shown unpunctuated; pick `.` `?` `!` from cards —
+   author so only one mark is defensible) and *commas* (tap the word the
+   missing comma goes after, via `renderTapWord`; the comma is drawn in on
+   answer). Comma items stick to direct address, introductory words, and
+   compound sentences — **no serial lists**, to dodge the Oxford-comma
+   ambiguity. The `after` word must appear exactly once and never end the
+   sentence.
 
 ## Core gameplay loop
 

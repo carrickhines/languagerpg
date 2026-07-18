@@ -611,6 +611,8 @@
     min-width: 110px;
   }
   .picbtn { font-size: 40px; padding: 8px 18px; min-width: 92px; }
+  /* Mark It! end-mark cards: a lone . ? ! needs to be big to read */
+  .wordcard.markcard { font-size: 44px; min-width: 90px; padding: 4px 22px; line-height: 1.2; }
   .wordcard:hover, .picbtn:hover { filter: brightness(1.18); }
   .wordcard:active, .picbtn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.4); }
   .right {
@@ -733,6 +735,22 @@
       <button class="choice" data-track="forge">
         <span class="emoji">⚒️</span>Word Forge
         <span class="sub">Build words from parts</span>
+      </button>
+      <button class="choice" data-track="grammar">
+        <span class="emoji">🏷️</span>Grammar Hunt
+        <span class="sub">Tap the noun or verb</span>
+      </button>
+      <button class="choice" data-track="syllable">
+        <span class="emoji">🔨</span>Syllable Smith
+        <span class="sub">Spell it chunk by chunk</span>
+      </button>
+      <button class="choice" data-track="twins">
+        <span class="emoji">🎭</span>Word Twins
+        <span class="sub">Same or opposite?</span>
+      </button>
+      <button class="choice" data-track="marks">
+        <span class="emoji">✏️</span>Mark It!
+        <span class="sub">Commas and end marks</span>
       </button>
     </div>
 
@@ -1384,6 +1402,292 @@ const FORGE = [
 const PREFIXES = new Set(['un', 're', 'in', 'im', 'dis', 'pre', 'mis', 'non', 'over', 'under']);
 const SUFFIXES = new Set(['ful', 'less', 'ly', 'er', 'est', 'able', 'ible', 'ness', 'y', 'ing', 'ed']);
 
+// Grammar Hunt: tap the one word of the asked part of speech. Authoring
+// rule: the sentence must contain EXACTLY ONE word of the asked class
+// (other classes may repeat freely), and the target token must appear
+// exactly once (same matching as Fix It!: trailing .,!? ignored,
+// case-sensitive).
+const GRAMMAR = [
+  // verbs (one verb only — no helping-verb pairs)
+  { s: 'The dog chased the ball.', pos: 'verb', a: 'chased' },
+  { s: 'My sister paints beautiful pictures.', pos: 'verb', a: 'paints' },
+  { s: 'The frog jumped into the pond.', pos: 'verb', a: 'jumped' },
+  { s: 'Grandma bakes cookies every Sunday.', pos: 'verb', a: 'bakes' },
+  { s: 'The wind howled all night.', pos: 'verb', a: 'howled' },
+  { s: 'Our team won the big game.', pos: 'verb', a: 'won' },
+  { s: 'The baby giggled at the puppy.', pos: 'verb', a: 'giggled' },
+  { s: 'Dad fixed the broken chair.', pos: 'verb', a: 'fixed' },
+  { s: 'Lightning flashed across the sky.', pos: 'verb', a: 'flashed' },
+  { s: 'She whispered the secret.', pos: 'verb', a: 'whispered' },
+  { s: 'The turtle crawled under the rock.', pos: 'verb', a: 'crawled' },
+  { s: 'My brother collects shiny rocks.', pos: 'verb', a: 'collects' },
+  { s: 'The chef chopped the onions.', pos: 'verb', a: 'chopped' },
+  { s: 'Waves crashed on the shore.', pos: 'verb', a: 'crashed' },
+  { s: 'The crowd cheered for the singer.', pos: 'verb', a: 'cheered' },
+  // nouns (exactly one noun in the sentence)
+  { s: 'My dog runs fast.', pos: 'noun', a: 'dog' },
+  { s: 'The teacher smiled kindly.', pos: 'noun', a: 'teacher' },
+  { s: 'Our house is big and cozy.', pos: 'noun', a: 'house' },
+  { s: 'The rain fell softly.', pos: 'noun', a: 'rain' },
+  { s: 'Her voice is very sweet.', pos: 'noun', a: 'voice' },
+  { s: 'The mountain looked huge.', pos: 'noun', a: 'mountain' },
+  { s: 'That movie was so funny.', pos: 'noun', a: 'movie' },
+  { s: 'My backpack feels really heavy.', pos: 'noun', a: 'backpack' },
+  { s: 'The soup smells delicious.', pos: 'noun', a: 'soup' },
+  { s: 'His jacket is bright red.', pos: 'noun', a: 'jacket' },
+  { s: 'The music sounded lovely.', pos: 'noun', a: 'music' },
+  { s: 'Their garden grows quickly.', pos: 'noun', a: 'garden' },
+  // adjectives (exactly one)
+  { s: 'The fluffy cat slept on the mat.', pos: 'adjective', a: 'fluffy' },
+  { s: 'She wore a purple dress.', pos: 'adjective', a: 'purple' },
+  { s: 'We climbed the steep hill.', pos: 'adjective', a: 'steep' },
+  { s: 'He told a hilarious joke.', pos: 'adjective', a: 'hilarious' },
+  { s: 'The brave knight saved the town.', pos: 'adjective', a: 'brave' },
+  { s: 'I found a shiny coin.', pos: 'adjective', a: 'shiny' },
+  { s: 'They live in a tiny cottage.', pos: 'adjective', a: 'tiny' },
+  { s: 'The spicy chili made me cough.', pos: 'adjective', a: 'spicy' },
+  { s: 'A gentle breeze blew through the window.', pos: 'adjective', a: 'gentle' },
+  { s: 'The ancient castle stood on the cliff.', pos: 'adjective', a: 'ancient' },
+  { s: 'We swam in the freezing lake.', pos: 'adjective', a: 'freezing' },
+  { s: 'He gave a polite answer.', pos: 'adjective', a: 'polite' },
+  // adverbs (exactly one, -ly style)
+  { s: 'The snail moved slowly across the path.', pos: 'adverb', a: 'slowly' },
+  { s: 'She sang sweetly at the concert.', pos: 'adverb', a: 'sweetly' },
+  { s: 'He slammed the door angrily.', pos: 'adverb', a: 'angrily' },
+  { s: 'The children played happily in the yard.', pos: 'adverb', a: 'happily' },
+  { s: 'I tiptoed quietly past the baby.', pos: 'adverb', a: 'quietly' },
+  { s: 'The cheetah ran swiftly.', pos: 'adverb', a: 'swiftly' },
+  { s: 'Grandpa spoke softly to the horse.', pos: 'adverb', a: 'softly' },
+  { s: 'She answered the question correctly.', pos: 'adverb', a: 'correctly' },
+  { s: 'The firefighters acted bravely.', pos: 'adverb', a: 'bravely' },
+  { s: 'He carefully carried the eggs.', pos: 'adverb', a: 'carefully' },
+  { s: 'The stars twinkled brightly.', pos: 'adverb', a: 'brightly' },
+  // pronouns (exactly one)
+  { s: 'She loves chocolate cake.', pos: 'pronoun', a: 'She' },
+  { s: 'The teacher gave him a gold star.', pos: 'pronoun', a: 'him' },
+  { s: 'They built a giant sandcastle.', pos: 'pronoun', a: 'They' },
+  { s: 'Mom told us a bedtime story.', pos: 'pronoun', a: 'us' },
+  { s: 'He plays soccer on Saturdays.', pos: 'pronoun', a: 'He' },
+  { s: 'The puppy followed me home.', pos: 'pronoun', a: 'me' },
+  { s: 'We baked cookies for the party.', pos: 'pronoun', a: 'We' },
+  { s: 'Dad drove them to school.', pos: 'pronoun', a: 'them' },
+  { s: 'It rained all weekend.', pos: 'pronoun', a: 'It' },
+  { s: 'The coach picked her first.', pos: 'pronoun', a: 'her' },
+];
+
+// Syllable Smith: spell a word the child knows orally by building it from
+// syllable chunks (Word Forge mechanic, harder decoys). m = the clue shown,
+// p = the syllables in order, d = misspelled decoy chunks. Rules: the parts
+// concatenate exactly into the word; decoys must not equal any part or
+// combine into a correct spelling.
+const SYLLB = [
+  { m: 'the day after today', p: ['to','mor','row'], d: ['more','tow'] },
+  { m: 'the day before today', p: ['yes','ter','day'], d: ['tur','dae'] },
+  { m: 'to keep something in your mind', p: ['re','mem','ber'], d: ['mim','bur'] },
+  { m: 'where doctors care for sick people', p: ['hos','pi','tal'], d: ['pit','tul'] },
+  { m: 'a huge gray animal with a trunk', p: ['el','e','phant'], d: ['fant','il'] },
+  { m: 'a long yellow fruit', p: ['ba','na','na'], d: ['nan','bu'] },
+  { m: 'it keeps the rain off you', p: ['um','brel','la'], d: ['brell','luh'] },
+  { m: 'a giant reptile from long ago', p: ['di','no','saur'], d: ['sore','now'] },
+  { m: 'a mountain that erupts', p: ['vol','ca','no'], d: ['kay','vul'] },
+  { m: 'a spinning storm of wind', p: ['tor','na','do'], d: ['doe','ter'] },
+  { m: 'the vegetable fries are made from', p: ['po','ta','to'], d: ['toe','tay'] },
+  { m: 'long noodles with sauce', p: ['spa','ghet','ti'], d: ['get','tee'] },
+  { m: 'a fun trip away from school', p: ['va','ca','tion'], d: ['shun','kay'] },
+  { m: 'it shows the months and days', p: ['cal','en','dar'], d: ['der','in'] },
+  { m: 'the day after Friday', p: ['Sat','ur','day'], d: ['er','dey'] },
+  { m: 'something that matters a lot', p: ['im','por','tant'], d: ['tent','per'] },
+  { m: 'very, very pretty', p: ['beau','ti','ful'], d: ['bu','full'] },
+  { m: 'a machine for games and typing', p: ['com','pu','ter'], d: ['pew','tur'] },
+  { m: 'the month before November', p: ['Oc','to','ber'], d: ['tow','bur'] },
+  { m: 'a special day off', p: ['hol','i','day'], d: ['dey','ee'] },
+  { m: 'a building full of books', p: ['li','brar','y'], d: ['berry','brer'] },
+  { m: 'with each other', p: ['to','geth','er'], d: ['gith','ur'] },
+  { m: 'really, really great', p: ['won','der','ful'], d: ['dur','full'] },
+  { m: 'a sandwich with a beef patty', p: ['ham','bur','ger'], d: ['bir','gur'] },
+  { m: 'any living creature', p: ['an','i','mal'], d: ['uh','mul'] },
+  { m: 'parents, kids, and grandparents', p: ['fam','i','ly'], d: ['fem','lee'] },
+  { m: 'the one you like best', p: ['fa','vor','ite'], d: ['ver','it'] },
+  { m: 'not the same', p: ['dif','fer','ent'], d: ['fur','int'] },
+  { m: 'sweet brown candy', p: ['choc','o','late'], d: ['lit','uh'] },
+  { m: 'the leader of a school', p: ['prin','ci','pal'], d: ['si','pul'] },
+  { m: 'to do times in math', p: ['mul','ti','ply'], d: ['tee','pli'] },
+  { m: 'a puzzle no one has solved', p: ['mys','ter','y'], d: ['tur','ee'] },
+  { m: 'a big snapping reptile', p: ['croc','o','dile'], d: ['dial','uh'] },
+  { m: 'it hops and has a pouch', p: ['kan','ga','roo'], d: ['rew','guh'] },
+  { m: 'it flies with spinning blades', p: ['hel','i','cop','ter'], d: ['kop','tur'] },
+  { m: 'you call people on it', p: ['tel','e','phone'], d: ['fone','uh'] },
+  { m: 'the month school starts', p: ['Sep','tem','ber'], d: ['tim','bur'] },
+  { m: 'an exciting journey', p: ['ad','ven','ture'], d: ['chur','vin'] },
+  { m: 'a person in a story', p: ['char','ac','ter'], d: ['ick','tur'] },
+  { m: 'a group of words that ends with a period', p: ['sen','tence'], d: ['tince','cen'] },
+  { m: 'you write with it', p: ['pen','cil'], d: ['sil','cel'] },
+  { m: 'glass you look through', p: ['win','dow'], d: ['doe','dough'] },
+  { m: 'a drawing or a photo', p: ['pic','ture'], d: ['chur','cher'] },
+  { m: 'a scary creature', p: ['mon','ster'], d: ['stur','stir'] },
+  { m: 'the boom after lightning', p: ['thun','der'], d: ['dur','thon'] },
+  { m: 'the coldest season', p: ['win','ter'], d: ['tur','wen'] },
+  { m: 'the hottest season', p: ['sum','mer'], d: ['mur','som'] },
+  { m: 'the start of the day', p: ['morn','ing'], d: ['een','ning'] },
+  { m: 'one single human', p: ['per','son'], d: ['sun','pur'] },
+  { m: 'you write on it', p: ['pa','per'], d: ['pur','pay'] },
+  { m: 'a striped big cat', p: ['ti','ger'], d: ['gur','tie'] },
+  { m: 'it spins a web with eight legs', p: ['spi','der'], d: ['dur','spy'] },
+  { m: 'a fire-breathing beast', p: ['drag','on'], d: ['un','onn'] },
+  { m: 'a hopping animal with long ears', p: ['rab','bit'], d: ['but','rabb'] },
+  { m: 'something a teacher teaches', p: ['les','son'], d: ['sun','liss'] },
+  { m: 'something you have to solve', p: ['prob','lem'], d: ['lum','blem'] },
+  { m: 'an orange crunchy vegetable', p: ['car','rot'], d: ['rut','kar'] },
+  { m: 'your aunt and uncle\'s kid', p: ['cous','in'], d: ['un','couz'] },
+  { m: 'a long trip', p: ['jour','ney'], d: ['nee','jer'] },
+  { m: 'sixty seconds', p: ['min','ute'], d: ['it','nut'] },
+];
+
+// Word Twins: synonyms and antonyms. type 'same' asks for a synonym,
+// 'opp' for the antonym. Decoy rule: a decoy may be tempting (even the
+// antonym on a 'same' question) but must never be a defensible answer.
+const TWINS = [
+  // synonyms
+  { w: 'enormous', type: 'same', a: 'huge', d: ['tiny', 'round'] },
+  { w: 'quick', type: 'same', a: 'fast', d: ['slow', 'tall'] },
+  { w: 'glad', type: 'same', a: 'happy', d: ['angry', 'sleepy'] },
+  { w: 'angry', type: 'same', a: 'mad', d: ['calm', 'silly'] },
+  { w: 'tired', type: 'same', a: 'sleepy', d: ['awake', 'hungry'] },
+  { w: 'scared', type: 'same', a: 'afraid', d: ['brave', 'bored'] },
+  { w: 'smart', type: 'same', a: 'clever', d: ['dull', 'loud'] },
+  { w: 'begin', type: 'same', a: 'start', d: ['finish', 'wait'] },
+  { w: 'shut', type: 'same', a: 'close', d: ['open', 'lift'] },
+  { w: 'yell', type: 'same', a: 'shout', d: ['whisper', 'giggle'] },
+  { w: 'rush', type: 'same', a: 'hurry', d: ['wait', 'rest'] },
+  { w: 'odd', type: 'same', a: 'strange', d: ['normal', 'neat'] },
+  { w: 'silent', type: 'same', a: 'quiet', d: ['noisy', 'bright'] },
+  { w: 'gift', type: 'same', a: 'present', d: ['letter', 'trick'] },
+  { w: 'tiny', type: 'same', a: 'small', d: ['giant', 'wide'] },
+  { w: 'leap', type: 'same', a: 'jump', d: ['crawl', 'sit'] },
+  { w: 'grin', type: 'same', a: 'smile', d: ['frown', 'blink'] },
+  { w: 'sad', type: 'same', a: 'unhappy', d: ['joyful', 'dizzy'] },
+  { w: 'cold', type: 'same', a: 'chilly', d: ['warm', 'dry'] },
+  { w: 'wet', type: 'same', a: 'soaked', d: ['dry', 'dusty'] },
+  { w: 'pretty', type: 'same', a: 'beautiful', d: ['ugly', 'salty'] },
+  { w: 'mistake', type: 'same', a: 'error', d: ['answer', 'secret'] },
+  { w: 'trash', type: 'same', a: 'garbage', d: ['treasure', 'dinner'] },
+  { w: 'street', type: 'same', a: 'road', d: ['river', 'bridge'] },
+  { w: 'kid', type: 'same', a: 'child', d: ['adult', 'puppy'] },
+  { w: 'speak', type: 'same', a: 'talk', d: ['listen', 'sleep'] },
+  { w: 'look', type: 'same', a: 'watch', d: ['ignore', 'smell'] },
+  { w: 'brave', type: 'same', a: 'fearless', d: ['afraid', 'lazy'] },
+  { w: 'real', type: 'same', a: 'true', d: ['fake', 'late'] },
+  { w: 'chilly', type: 'same', a: 'cool', d: ['toasty', 'soggy'] },
+  // antonyms
+  { w: 'hot', type: 'opp', a: 'cold', d: ['sunny', 'soft'] },
+  { w: 'big', type: 'opp', a: 'little', d: ['huge', 'round'] },
+  { w: 'day', type: 'opp', a: 'night', d: ['morning', 'sun'] },
+  { w: 'up', type: 'opp', a: 'down', d: ['over', 'high'] },
+  { w: 'fast', type: 'opp', a: 'slow', d: ['quick', 'speedy'] },
+  { w: 'happy', type: 'opp', a: 'sad', d: ['glad', 'sleepy'] },
+  { w: 'empty', type: 'opp', a: 'full', d: ['hollow', 'open'] },
+  { w: 'loud', type: 'opp', a: 'quiet', d: ['noisy', 'deep'] },
+  { w: 'open', type: 'opp', a: 'closed', d: ['wide', 'broken'] },
+  { w: 'soft', type: 'opp', a: 'hard', d: ['fluffy', 'warm'] },
+  { w: 'clean', type: 'opp', a: 'dirty', d: ['neat', 'shiny'] },
+  { w: 'early', type: 'opp', a: 'late', d: ['soon', 'first'] },
+  { w: 'easy', type: 'opp', a: 'difficult', d: ['simple', 'slow'] },
+  { w: 'dry', type: 'opp', a: 'wet', d: ['dusty', 'warm'] },
+  { w: 'push', type: 'opp', a: 'pull', d: ['lift', 'drop'] },
+  { w: 'front', type: 'opp', a: 'back', d: ['side', 'top'] },
+  { w: 'first', type: 'opp', a: 'last', d: ['next', 'best'] },
+  { w: 'win', type: 'opp', a: 'lose', d: ['tie', 'play'] },
+  { w: 'laugh', type: 'opp', a: 'cry', d: ['smile', 'shout'] },
+  { w: 'friend', type: 'opp', a: 'enemy', d: ['buddy', 'stranger'] },
+  { w: 'above', type: 'opp', a: 'below', d: ['beside', 'inside'] },
+  { w: 'asleep', type: 'opp', a: 'awake', d: ['dreaming', 'resting'] },
+  { w: 'give', type: 'opp', a: 'take', d: ['share', 'bring'] },
+  { w: 'strong', type: 'opp', a: 'weak', d: ['tough', 'tall'] },
+  { w: 'wide', type: 'opp', a: 'narrow', d: ['broad', 'long'] },
+  { w: 'smooth', type: 'opp', a: 'rough', d: ['silky', 'flat'] },
+  { w: 'young', type: 'opp', a: 'old', d: ['little', 'tall'] },
+  { w: 'always', type: 'opp', a: 'never', d: ['often', 'soon'] },
+  { w: 'forget', type: 'opp', a: 'remember', d: ['forgive', 'repeat'] },
+  { w: 'inside', type: 'opp', a: 'outside', d: ['upstairs', 'nearby'] },
+];
+
+// Mark It!: punctuation. Two item shapes:
+//  { end, a }      — the sentence is shown without its end mark; pick . ? !
+//                    (author so only ONE mark is defensible)
+//  { s, after }    — the sentence is missing exactly one comma; tap the word
+//                    the comma goes after (`after` must appear exactly once,
+//                    and never at the end of the sentence). Comma types:
+//                    direct address, introductory word/phrase, and compound
+//                    sentences — no serial lists (Oxford-comma ambiguity).
+const MARKS = [
+  // end marks: statements
+  { end: 'My favorite color is green', a: '.' },
+  { end: 'The library closes at five', a: '.' },
+  { end: 'Our cat sleeps all day', a: '.' },
+  { end: 'We had pancakes for breakfast', a: '.' },
+  { end: 'The museum was quiet today', a: '.' },
+  { end: 'Sam finished his homework', a: '.' },
+  { end: 'The train arrives at noon', a: '.' },
+  { end: 'I left my boots by the door', a: '.' },
+  { end: 'Grandma lives on a farm', a: '.' },
+  { end: 'The moon looked full last night', a: '.' },
+  // end marks: questions
+  { end: 'What time is it', a: '?' },
+  { end: 'Where did you put my shoes', a: '?' },
+  { end: 'Can we go to the park', a: '?' },
+  { end: 'Who ate the last cookie', a: '?' },
+  { end: 'Why is the sky blue', a: '?' },
+  { end: 'Do you want more juice', a: '?' },
+  { end: 'How old is your dog', a: '?' },
+  { end: 'When does school start', a: '?' },
+  { end: 'Which book is your favorite', a: '?' },
+  { end: 'Are we there yet', a: '?' },
+  // end marks: exclamations
+  { end: 'Watch out for that car', a: '!' },
+  { end: 'We won the championship', a: '!' },
+  { end: 'That fireworks show was amazing', a: '!' },
+  { end: 'Look at the size of that pumpkin', a: '!' },
+  { end: 'We get a snow day', a: '!' },
+  { end: 'My kite is flying away', a: '!' },
+  { end: 'What a beautiful rainbow', a: '!' },
+  { end: 'Happy birthday', a: '!' },
+  { end: 'The dragon is right behind you', a: '!' },
+  { end: 'This is the best day ever', a: '!' },
+  // commas: direct address
+  { s: 'Come here Max.', after: 'here' },
+  { s: 'Mom can I have a snack?', after: 'Mom' },
+  { s: 'Good night Grandma.', after: 'night' },
+  { s: 'Ella it is your turn.', after: 'Ella' },
+  { s: 'Thank you Coach.', after: 'you' },
+  { s: 'Ben please feed the fish.', after: 'Ben' },
+  { s: 'That was awesome Leo.', after: 'awesome' },
+  { s: 'Watch this Dad.', after: 'this' },
+  { s: 'Happy birthday Mia.', after: 'birthday' },
+  { s: 'Sit down Rex.', after: 'down' },
+  // commas: introductory words and phrases
+  { s: 'Yes I would love some cake.', after: 'Yes' },
+  { s: 'No the game is not over.', after: 'No' },
+  { s: 'First we mix the flour.', after: 'First' },
+  { s: 'Next add the eggs.', after: 'Next' },
+  { s: 'Finally the pizza was ready.', after: 'Finally' },
+  { s: 'Well that was a surprise.', after: 'Well' },
+  { s: 'Wow that roller coaster was fast.', after: 'Wow' },
+  { s: 'After lunch we played kickball.', after: 'lunch' },
+  { s: 'In the morning we packed the car.', after: 'morning' },
+  { s: 'Later that day it started to rain.', after: 'day' },
+  // commas: compound sentences
+  { s: 'I wanted to stay up but I fell asleep.', after: 'up' },
+  { s: 'She studied hard and she passed the test.', after: 'hard' },
+  { s: 'We can watch a movie or we can play a game.', after: 'movie' },
+  { s: 'The dog barked and the cat ran away.', after: 'barked' },
+  { s: 'I like broccoli but my brother hates it.', after: 'broccoli' },
+  { s: 'You can ride your bike or you can walk.', after: 'bike' },
+  { s: 'It rained all morning so we stayed inside.', after: 'morning' },
+  { s: 'He forgot his lines but the play went great.', after: 'lines' },
+  { s: 'The power went out so we lit candles.', after: 'out' },
+  { s: 'I called her name and she turned around.', after: 'name' },
+];
+
 // Foes: escalating HP; last one is the boss. `scale` evens out emoji glyphs
 // that fill their em-box differently, so the foes read as similar-sized.
 const FOES = [
@@ -1501,7 +1805,11 @@ function startGame() {
     state.track === 'rhyme'   ? RHYMES  :
     state.track === 'past'    ? PAST    :
     state.track === 'fixit'   ? FIXIT   :
-    state.track === 'forge'   ? FORGE   : WORDS);
+    state.track === 'forge'   ? FORGE   :
+    state.track === 'grammar' ? GRAMMAR :
+    state.track === 'syllable'? SYLLB   :
+    state.track === 'twins'   ? TWINS   :
+    state.track === 'marks'   ? MARKS   : WORDS);
   showScreen('game');
   spawnFoe();
 }
@@ -1646,9 +1954,72 @@ function makeForgeQ() {
   };
 }
 
+function makeGrammarQ() {
+  const item = state.draw();
+  return {
+    prompt: `Tap the ${item.pos}!`,
+    s: item.s, target: item.a,
+    revealMsg: `The ${item.pos} was "${item.a}"!`,
+    isTapWord: true,
+    sayIt: null,   // no audio — big-hero tracks are read from the screen
+  };
+}
+
+function makeSyllableQ() {
+  const item = state.draw();
+  return {
+    prompt: 'Spell it with syllables!',
+    meaning: item.m,
+    parts: item.p,
+    bank: shuffle([...item.p, ...item.d]),
+    isForge: true,
+    sayIt: null,
+  };
+}
+
+function makeTwinsQ() {
+  const item = state.draw();
+  const same = item.type === 'same';
+  return {
+    prompt: same ? 'Which means the SAME?' : 'Which means the OPPOSITE?',
+    big: item.w,
+    choices: shuffle([item.a, ...item.d]),
+    answer: item.a,
+    revealMsg: `"${item.w}" ${same ? 'means the same as' : 'is the opposite of'} "${item.a}"!`,
+    sayIt: null,
+  };
+}
+
+const MARK_NAMES = { '.': 'a period', '?': 'a question mark', '!': 'an exclamation point' };
+
+function makeMarksQ() {
+  const item = state.draw();
+  if (item.end) {
+    return {
+      prompt: 'How should this sentence end?',
+      big: item.end,
+      bigClass: 'sentence',
+      choices: shuffle(['.', '?', '!']),
+      answer: item.a,
+      isMarks: true,
+      revealMsg: `It needs ${MARK_NAMES[item.a]}  ${item.a}`,
+      sayIt: null,
+    };
+  }
+  return {
+    prompt: 'Tap the word that needs a comma after it!',
+    s: item.s, target: item.after,
+    revealMsg: `The comma goes after "${item.after}"!`,
+    isTapWord: true, addComma: true,
+    sayIt: null,
+  };
+}
+
 const MAKERS = { letters: makeLetterQ, builder: makeBuilderQ, sight: makeSightQ,
                  read: makeReadQ, rhyme: makeRhymeQ, past: makePastQ,
-                 fixit: makeFixitQ, forge: makeForgeQ };
+                 fixit: makeFixitQ, forge: makeForgeQ,
+                 grammar: makeGrammarQ, syllable: makeSyllableQ,
+                 twins: makeTwinsQ, marks: makeMarksQ };
 
 /* ==================================================================
    Render the question + answer area
@@ -1664,7 +2035,9 @@ function newQuestion() {
   const answers = $('answers');
   answers.innerHTML = '';
 
-  if (q.isFixit) {
+  if (q.isTapWord) {
+    renderTapWord();
+  } else if (q.isFixit) {
     renderFixit();
   } else if (q.isForge) {
     q.filled = [];
@@ -1705,6 +2078,7 @@ function newQuestion() {
       if (q.isBlocks)      el = blockBtn(choice);
       else if (q.isPics)   { el = document.createElement('button'); el.className = 'picbtn'; el.textContent = choice; }
       else                 { el = document.createElement('button'); el.className = 'wordcard'; el.textContent = choice; }
+      if (q.isMarks) el.classList.add('markcard');
       el.addEventListener('click', () => pickAnswer(el, choice === q.answer));
       answers.appendChild(el);
     });
@@ -1747,6 +2121,39 @@ function renderSlots() {
    Fix It! — tap the wrong word, then tap the correction
    ================================================================== */
 const coreWord = tok => tok.replace(/[.,!?]+$/, '');
+
+// Grammar Hunt + Mark It! commas: one-phase "tap the right word" — same
+// token matching as Fix It! (trailing .,!? ignored, case-sensitive)
+function renderTapWord() {
+  const q = state.question;
+  const big = $('qBig');
+  big.className = 'sentence';
+  big.innerHTML = '';
+  q.s.split(' ').forEach(tok => {
+    const w = document.createElement('button');
+    w.className = 'word-tok';
+    w.textContent = tok;
+    w.addEventListener('click', () => {
+      if (state.answered) return;
+      if (coreWord(tok) === q.target) {
+        w.classList.add('fixed');
+        if (q.addComma) w.textContent = tok + ',';
+        resolveCorrect();
+      } else {
+        w.classList.add('wrongPick');
+        const right = [...big.querySelectorAll('.word-tok')]
+          .find(x => coreWord(x.textContent) === q.target);
+        if (right) {
+          right.classList.add('fixed');
+          if (q.addComma) right.textContent += ',';
+        }
+        resolveWrong(q.revealMsg);
+      }
+    });
+    big.appendChild(w);
+    big.appendChild(document.createTextNode(' '));
+  });
+}
 
 function renderFixit() {
   const q = state.question;
@@ -1808,9 +2215,13 @@ function chunkBtn(chunk) {
   const b = document.createElement('button');
   b.className = 'block chunk';
   b.textContent = chunk;
-  // color by role: prefixes blue, suffixes violet, roots green
+  // Word Forge colors by role: prefixes blue, suffixes violet, roots green.
+  // Syllable Smith has no roles, so its chunks tint by first letter like
+  // the ABC blocks.
   b.style.setProperty('--h',
-    PREFIXES.has(chunk) ? 210 : SUFFIXES.has(chunk) ? 285 : 130);
+    state.track === 'syllable'
+      ? ((chunk.toUpperCase().charCodeAt(0) - 65) * 14 % 360 + 360) % 360
+      : PREFIXES.has(chunk) ? 210 : SUFFIXES.has(chunk) ? 285 : 130);
   return b;
 }
 
@@ -1897,6 +2308,7 @@ function resolveWrong(msg) {
   Sound.wrong();
   const q = state.question;
   const reveal = q.isBuilder ? '' :
+    q.revealMsg ? q.revealMsg :
     q.isRhyme ? `${q.tWord} rhymes with ${q.aWord} ${q.answer}` :
     q.isPast ? `Yesterday I ${q.answer}!` :
     q.isPics ? `It was ${q.word} ${q.answer}` : `It was ${String(q.answer).toUpperCase()}`;
