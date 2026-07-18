@@ -32,6 +32,23 @@
   .intro b { color: var(--gold); }
   h2 { margin: 26px 0 10px; font-size: 1.2rem; color: var(--gold); }
 
+  .controls {
+    position: sticky; top: 8px; z-index: 5;
+    display: flex; gap: 10px; margin-bottom: 14px; padding: 10px;
+    background: rgba(43,35,80,.88); border-radius: 16px;
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  }
+  .controls input {
+    flex: 1; min-width: 0; font-family: inherit; font-size: 1rem;
+    padding: 10px 14px; border-radius: 999px; border: none;
+  }
+  .controls button {
+    font-family: inherit; font-size: .95rem; border: none; cursor: pointer;
+    padding: 10px 16px; border-radius: 999px; white-space: nowrap;
+    background: rgba(255,255,255,.15); color: var(--white);
+  }
+  .controls button.on { background: var(--gold); color: var(--ink); }
+
   .row {
     display: flex; align-items: center; gap: 10px;
     background: var(--card); color: var(--ink);
@@ -82,7 +99,12 @@
     site) for the most compatible audio. Use the built-in or a wired mic —
     <b>Bluetooth headsets record in telephone quality</b>. You can stop and
     come back — already recorded lines show ✅ and are kept when you download
-    again.
+    again. To <b>re-record one line</b>, just tap its 🎙️ again — only that
+    clip changes, and the next download includes everything.
+  </div>
+  <div class="controls">
+    <input id="filterBox" type="search" placeholder="Find a line… (e.g. cat, tear, victory)">
+    <button id="missingBtn">🎯 Missing only</button>
   </div>
   <div id="sections"></div>
 </main>
@@ -95,7 +117,7 @@
 <script>
 'use strict';
 
-/* Keep these four lists in sync with index.html */
+/* Keep these five lists in sync with index.html */
 const LETTERS = [
   ['A','apple'],['B','ball'],['C','cat'],['D','dog'],['E','elephant'],
   ['F','fish'],['G','grapes'],['H','hat'],['I','ice'],['J','juice'],
@@ -116,6 +138,74 @@ const RHYME_WORDS = ['frog','log','ten','socks','tree','man','pan','star',
                      'jar','sled','bread','cap','clap','eye','fly','one',
                      'goat','boat','coat','cake','snake','mouse','house',
                      'moon','spoon','fish','dish','ring','king'];
+// Time Machine verbs: pastFirst sets which option is spoken first — the
+// game shows the answer cards in the same order the clip speaks them
+const PAST = [
+  { now: 'go',     past: 'went',    wrong: 'goed',      pastFirst: false },
+  { now: 'eat',    past: 'ate',     wrong: 'eated',     pastFirst: true  },
+  { now: 'see',    past: 'saw',     wrong: 'seed',      pastFirst: false },
+  { now: 'run',    past: 'ran',     wrong: 'runned',    pastFirst: false },
+  { now: 'come',   past: 'came',    wrong: 'comed',     pastFirst: true  },
+  { now: 'get',    past: 'got',     wrong: 'getted',    pastFirst: false },
+  { now: 'give',   past: 'gave',    wrong: 'gived',     pastFirst: true  },
+  { now: 'take',   past: 'took',    wrong: 'taked',     pastFirst: true  },
+  { now: 'make',   past: 'made',    wrong: 'maked',     pastFirst: false },
+  { now: 'ride',   past: 'rode',    wrong: 'rided',     pastFirst: true  },
+  { now: 'write',  past: 'wrote',   wrong: 'writed',    pastFirst: false },
+  { now: 'drive',  past: 'drove',   wrong: 'drived',    pastFirst: false },
+  { now: 'sing',   past: 'sang',    wrong: 'singed',    pastFirst: true  },
+  { now: 'drink',  past: 'drank',   wrong: 'drinked',   pastFirst: false },
+  { now: 'swim',   past: 'swam',    wrong: 'swimmed',   pastFirst: true  },
+  { now: 'sit',    past: 'sat',     wrong: 'sitted',    pastFirst: false },
+  { now: 'stand',  past: 'stood',   wrong: 'standed',   pastFirst: true  },
+  { now: 'sleep',  past: 'slept',   wrong: 'sleeped',   pastFirst: false },
+  { now: 'sweep',  past: 'swept',   wrong: 'sweeped',   pastFirst: true  },
+  { now: 'keep',   past: 'kept',    wrong: 'keeped',    pastFirst: false },
+  { now: 'feel',   past: 'felt',    wrong: 'feeled',    pastFirst: true  },
+  { now: 'leave',  past: 'left',    wrong: 'leaved',    pastFirst: false },
+  { now: 'mean',   past: 'meant',   wrong: 'meaned',    pastFirst: false },
+  { now: 'say',    past: 'said',    wrong: 'sayed',     pastFirst: true  },
+  { now: 'hear',   past: 'heard',   wrong: 'heared',    pastFirst: false },
+  { now: 'tell',   past: 'told',    wrong: 'telled',    pastFirst: true  },
+  { now: 'sell',   past: 'sold',    wrong: 'selled',    pastFirst: true  },
+  { now: 'find',   past: 'found',   wrong: 'finded',    pastFirst: false },
+  { now: 'think',  past: 'thought', wrong: 'thinked',   pastFirst: true  },
+  { now: 'bring',  past: 'brought', wrong: 'bringed',   pastFirst: false },
+  { now: 'buy',    past: 'bought',  wrong: 'buyed',     pastFirst: false },
+  { now: 'catch',  past: 'caught',  wrong: 'catched',   pastFirst: true  },
+  { now: 'teach',  past: 'taught',  wrong: 'teached',   pastFirst: false },
+  { now: 'fight',  past: 'fought',  wrong: 'fighted',   pastFirst: true  },
+  { now: 'fly',    past: 'flew',    wrong: 'flied',     pastFirst: false },
+  { now: 'grow',   past: 'grew',    wrong: 'growed',    pastFirst: true  },
+  { now: 'blow',   past: 'blew',    wrong: 'blowed',    pastFirst: false },
+  { now: 'throw',  past: 'threw',   wrong: 'throwed',   pastFirst: true  },
+  { now: 'know',   past: 'knew',    wrong: 'knowed',    pastFirst: false },
+  { now: 'draw',   past: 'drew',    wrong: 'drawed',    pastFirst: true  },
+  { now: 'fall',   past: 'fell',    wrong: 'falled',    pastFirst: false },
+  { now: 'break',  past: 'broke',   wrong: 'breaked',   pastFirst: true  },
+  { now: 'speak',  past: 'spoke',   wrong: 'speaked',   pastFirst: false },
+  { now: 'steal',  past: 'stole',   wrong: 'stealed',   pastFirst: true  },
+  { now: 'wear',   past: 'wore',    wrong: 'weared',    pastFirst: false },
+  { now: 'tear',   past: 'tore',    wrong: 'teared',    pastFirst: true  },
+  { now: 'hide',   past: 'hid',     wrong: 'hided',     pastFirst: false },
+  { now: 'bite',   past: 'bit',     wrong: 'bited',     pastFirst: true  },
+  { now: 'lose',   past: 'lost',    wrong: 'losed',     pastFirst: false },
+  { now: 'win',    past: 'won',     wrong: 'winned',    pastFirst: true  },
+  { now: 'dig',    past: 'dug',     wrong: 'digged',    pastFirst: false },
+  { now: 'hold',   past: 'held',    wrong: 'holded',    pastFirst: true  },
+  { now: 'build',  past: 'built',   wrong: 'builded',   pastFirst: false },
+  { now: 'send',   past: 'sent',    wrong: 'sended',    pastFirst: true  },
+  { now: 'spend',  past: 'spent',   wrong: 'spended',   pastFirst: false },
+  { now: 'hurt',   past: 'hurt',    wrong: 'hurted',    pastFirst: true  },
+  { now: 'hit',    past: 'hit',     wrong: 'hitted',    pastFirst: false },
+  { now: 'cut',    past: 'cut',     wrong: 'cutted',    pastFirst: true  },
+  { now: 'feed',   past: 'fed',     wrong: 'feeded',    pastFirst: false },
+  { now: 'shake',  past: 'shook',   wrong: 'shaked',    pastFirst: true  },
+  { now: 'sting',  past: 'stung',   wrong: 'stinged',   pastFirst: false },
+  { now: 'swing',  past: 'swung',   wrong: 'swinged',   pastFirst: true  },
+  { now: 'forget', past: 'forgot',  wrong: 'forgetted', pastFirst: false },
+  { now: 'freeze', past: 'froze',   wrong: 'freezed',   pastFirst: true  },
+];
 
 const SECTIONS = [
   { title: 'Game phrases', items: [
@@ -136,6 +226,11 @@ const SECTIONS = [
     SIGHT.map(w => ({ id: 'S_' + w, text: w })) },
   { title: 'Rhyme words (just the word)', items:
     RHYME_WORDS.map(w => ({ id: 'R_' + w, text: w })) },
+  { title: 'Time Machine (read the whole line, keep the order)', items:
+    PAST.map(v => {
+      const [a, b] = v.pastFirst ? [v.past, v.wrong] : [v.wrong, v.past];
+      return { id: 'V_' + v.now, text: `Today I ${v.now}. Yesterday I... ${a}? or ${b}?` };
+    }) },
 ];
 const ALL = SECTIONS.flatMap(s => s.items);
 
@@ -146,7 +241,7 @@ const clips = Object.assign({}, window.VOICE_CLIPS || {});
 const sectionsEl = document.getElementById('sections');
 SECTIONS.forEach(sec => {
   const h = document.createElement('h2');
-  h.textContent = sec.title;
+  sec.h = h;                                  // kept for the filter + counts
   sectionsEl.appendChild(h);
   sec.items.forEach(item => {
     const row = document.createElement('div');
@@ -173,7 +268,38 @@ function refreshRow(id) {
 function refreshProgress() {
   const done = ALL.filter(i => clips[i.id]).length;
   document.getElementById('progress').textContent = `${done} / ${ALL.length} recorded`;
+  SECTIONS.forEach(sec => {
+    const d = sec.items.filter(i => clips[i.id]).length;
+    sec.h.textContent = `${sec.title} — ${d}/${sec.items.length}`;
+  });
 }
+
+/* ---------- find a line: search + missing-only filter ----------
+   Filters only apply when a control changes, so a row you just recorded
+   stays visible for the ▶ check even in "missing only" mode. */
+const filterBox = document.getElementById('filterBox');
+const missingBtn = document.getElementById('missingBtn');
+let missingOnly = false;
+
+function applyFilter() {
+  const q = filterBox.value.trim().toLowerCase();
+  SECTIONS.forEach(sec => {
+    let shown = 0;
+    sec.items.forEach(item => {
+      const show = (!missingOnly || !clips[item.id]) &&
+                   (!q || item.text.toLowerCase().includes(q));
+      document.getElementById('row_' + item.id).style.display = show ? '' : 'none';
+      if (show) shown++;
+    });
+    sec.h.style.display = shown ? '' : 'none';
+  });
+}
+filterBox.addEventListener('input', applyFilter);
+missingBtn.addEventListener('click', () => {
+  missingOnly = !missingOnly;
+  missingBtn.classList.toggle('on', missingOnly);
+  applyFilter();
+});
 
 /* ---------- recording (MediaRecorder, built into the browser) ---------- */
 // mp4/AAC first: it plays back everywhere, including iPads

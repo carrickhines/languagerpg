@@ -718,6 +718,10 @@
         <span class="emoji">🎵</span>Rhyme Time
         <span class="sub">Hear it, tap the rhyme</span>
       </button>
+      <button class="choice" data-track="past">
+        <span class="emoji">🕰️</span>Time Machine
+        <span class="sub">Today I... yesterday I...</span>
+      </button>
     </div>
 
     <div class="group-label">Big hero quests</div>
@@ -1009,6 +1013,82 @@ const RHYMES = [
 const wordClip = w =>
   WORDS.some(p => p[0] === w) ? 'W_' + w :
   SIGHT.includes(w)           ? 'S_' + w : 'R_' + w;
+
+// Time Machine: irregular past tense, entirely by ear. The V_ clip for each
+// verb speaks the whole item — "Today I tear. Yesterday I... teared? or
+// tore?" — and the two answer cards appear in that exact spoken order, so
+// a pre-reader picks the one that sounded right. `pastFirst` sets whether
+// the real past form is spoken (and shown) first; vary it when authoring so
+// the answer's position never falls into a pattern. Decoy rule: `wrong` is
+// the classic over-regularized kid form, and must never be a defensible
+// real past tense (avoid pay/payed, wake/waked, dive/dived, hang/hanged) or
+// sound identical to the answer. Keep this list in sync with record.html.
+const PAST = [
+  { now: 'go',     past: 'went',    wrong: 'goed',      pastFirst: false },
+  { now: 'eat',    past: 'ate',     wrong: 'eated',     pastFirst: true  },
+  { now: 'see',    past: 'saw',     wrong: 'seed',      pastFirst: false },
+  { now: 'run',    past: 'ran',     wrong: 'runned',    pastFirst: false },
+  { now: 'come',   past: 'came',    wrong: 'comed',     pastFirst: true  },
+  { now: 'get',    past: 'got',     wrong: 'getted',    pastFirst: false },
+  { now: 'give',   past: 'gave',    wrong: 'gived',     pastFirst: true  },
+  { now: 'take',   past: 'took',    wrong: 'taked',     pastFirst: true  },
+  { now: 'make',   past: 'made',    wrong: 'maked',     pastFirst: false },
+  { now: 'ride',   past: 'rode',    wrong: 'rided',     pastFirst: true  },
+  { now: 'write',  past: 'wrote',   wrong: 'writed',    pastFirst: false },
+  { now: 'drive',  past: 'drove',   wrong: 'drived',    pastFirst: false },
+  { now: 'sing',   past: 'sang',    wrong: 'singed',    pastFirst: true  },
+  { now: 'drink',  past: 'drank',   wrong: 'drinked',   pastFirst: false },
+  { now: 'swim',   past: 'swam',    wrong: 'swimmed',   pastFirst: true  },
+  { now: 'sit',    past: 'sat',     wrong: 'sitted',    pastFirst: false },
+  { now: 'stand',  past: 'stood',   wrong: 'standed',   pastFirst: true  },
+  { now: 'sleep',  past: 'slept',   wrong: 'sleeped',   pastFirst: false },
+  { now: 'sweep',  past: 'swept',   wrong: 'sweeped',   pastFirst: true  },
+  { now: 'keep',   past: 'kept',    wrong: 'keeped',    pastFirst: false },
+  { now: 'feel',   past: 'felt',    wrong: 'feeled',    pastFirst: true  },
+  { now: 'leave',  past: 'left',    wrong: 'leaved',    pastFirst: false },
+  { now: 'mean',   past: 'meant',   wrong: 'meaned',    pastFirst: false },
+  { now: 'say',    past: 'said',    wrong: 'sayed',     pastFirst: true  },
+  { now: 'hear',   past: 'heard',   wrong: 'heared',    pastFirst: false },
+  { now: 'tell',   past: 'told',    wrong: 'telled',    pastFirst: true  },
+  { now: 'sell',   past: 'sold',    wrong: 'selled',    pastFirst: true  },
+  { now: 'find',   past: 'found',   wrong: 'finded',    pastFirst: false },
+  { now: 'think',  past: 'thought', wrong: 'thinked',   pastFirst: true  },
+  { now: 'bring',  past: 'brought', wrong: 'bringed',   pastFirst: false },
+  { now: 'buy',    past: 'bought',  wrong: 'buyed',     pastFirst: false },
+  { now: 'catch',  past: 'caught',  wrong: 'catched',   pastFirst: true  },
+  { now: 'teach',  past: 'taught',  wrong: 'teached',   pastFirst: false },
+  { now: 'fight',  past: 'fought',  wrong: 'fighted',   pastFirst: true  },
+  { now: 'fly',    past: 'flew',    wrong: 'flied',     pastFirst: false },
+  { now: 'grow',   past: 'grew',    wrong: 'growed',    pastFirst: true  },
+  { now: 'blow',   past: 'blew',    wrong: 'blowed',    pastFirst: false },
+  { now: 'throw',  past: 'threw',   wrong: 'throwed',   pastFirst: true  },
+  { now: 'know',   past: 'knew',    wrong: 'knowed',    pastFirst: false },
+  { now: 'draw',   past: 'drew',    wrong: 'drawed',    pastFirst: true  },
+  { now: 'fall',   past: 'fell',    wrong: 'falled',    pastFirst: false },
+  { now: 'break',  past: 'broke',   wrong: 'breaked',   pastFirst: true  },
+  { now: 'speak',  past: 'spoke',   wrong: 'speaked',   pastFirst: false },
+  { now: 'steal',  past: 'stole',   wrong: 'stealed',   pastFirst: true  },
+  { now: 'wear',   past: 'wore',    wrong: 'weared',    pastFirst: false },
+  { now: 'tear',   past: 'tore',    wrong: 'teared',    pastFirst: true  },
+  { now: 'hide',   past: 'hid',     wrong: 'hided',     pastFirst: false },
+  { now: 'bite',   past: 'bit',     wrong: 'bited',     pastFirst: true  },
+  { now: 'lose',   past: 'lost',    wrong: 'losed',     pastFirst: false },
+  { now: 'win',    past: 'won',     wrong: 'winned',    pastFirst: true  },
+  { now: 'dig',    past: 'dug',     wrong: 'digged',    pastFirst: false },
+  { now: 'hold',   past: 'held',    wrong: 'holded',    pastFirst: true  },
+  { now: 'build',  past: 'built',   wrong: 'builded',   pastFirst: false },
+  { now: 'send',   past: 'sent',    wrong: 'sended',    pastFirst: true  },
+  { now: 'spend',  past: 'spent',   wrong: 'spended',   pastFirst: false },
+  { now: 'hurt',   past: 'hurt',    wrong: 'hurted',    pastFirst: true  },
+  { now: 'hit',    past: 'hit',     wrong: 'hitted',    pastFirst: false },
+  { now: 'cut',    past: 'cut',     wrong: 'cutted',    pastFirst: true  },
+  { now: 'feed',   past: 'fed',     wrong: 'feeded',    pastFirst: false },
+  { now: 'shake',  past: 'shook',   wrong: 'shaked',    pastFirst: true  },
+  { now: 'sting',  past: 'stung',   wrong: 'stinged',   pastFirst: false },
+  { now: 'swing',  past: 'swung',   wrong: 'swinged',   pastFirst: true  },
+  { now: 'forget', past: 'forgot',  wrong: 'forgetted', pastFirst: false },
+  { now: 'freeze', past: 'froze',   wrong: 'freezed',   pastFirst: true  },
+];
 
 /* ------------------------------------------------------------------
    Big-hero tracks (3rd grade): all text on screen, no voice clips
@@ -1418,6 +1498,7 @@ function startGame() {
     state.track === 'letters' ? LETTERS :
     state.track === 'sight'   ? SIGHT   :
     state.track === 'rhyme'   ? RHYMES  :
+    state.track === 'past'    ? PAST    :
     state.track === 'fixit'   ? FIXIT   :
     state.track === 'forge'   ? FORGE   : WORDS);
   showScreen('game');
@@ -1526,6 +1607,23 @@ function makeRhymeQ() {
   };
 }
 
+function makePastQ() {
+  const item = state.draw();
+  // NOT shuffled: the V_ clip speaks the options in this exact order, so
+  // the cards must match it — vary `pastFirst` in the data instead
+  const opts = item.pastFirst ? [item.past, item.wrong] : [item.wrong, item.past];
+  return {
+    prompt: 'Which sounds right?',
+    big: `Today I ${item.now}. Yesterday I ...?`,
+    bigClass: 'sentence',
+    choices: opts,
+    answer: item.past,
+    isPast: true,
+    sayIt: () => Voice.play(['V_' + item.now],
+      `Today I ${item.now}. Yesterday I... ${opts[0]}? or ${opts[1]}?`),
+  };
+}
+
 function makeFixitQ() {
   const item = state.draw();
   return {
@@ -1549,7 +1647,7 @@ function makeForgeQ() {
 }
 
 const MAKERS = { letters: makeLetterQ, builder: makeBuilderQ, sight: makeSightQ,
-                 read: makeReadQ, rhyme: makeRhymeQ,
+                 read: makeReadQ, rhyme: makeRhymeQ, past: makePastQ,
                  fixit: makeFixitQ, forge: makeForgeQ };
 
 /* ==================================================================
@@ -1601,6 +1699,7 @@ function newQuestion() {
     });
   } else {
     $('qBig').textContent = q.big;
+    if (q.bigClass) $('qBig').className = q.bigClass;
     q.choices.forEach(choice => {
       let el;
       if (q.isBlocks)      el = blockBtn(choice);
@@ -1798,6 +1897,7 @@ function resolveWrong(msg) {
   const q = state.question;
   const reveal = q.isBuilder ? '' :
     q.isRhyme ? `${q.tWord} rhymes with ${q.aWord} ${q.answer}` :
+    q.isPast ? `Yesterday I ${q.answer}!` :
     q.isPics ? `It was ${q.word} ${q.answer}` : `It was ${String(q.answer).toUpperCase()}`;
   $('feedback').textContent = msg || `Almost! ${reveal}`;
   // say the right answer out loud (after the buzzer), except on letters

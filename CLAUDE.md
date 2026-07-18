@@ -30,7 +30,7 @@ The game **never listens to the child** — no speech-to-text, no transcription
 service, no API keys, no external services. Instead:
 
 - **The game's voice is the parent's voice.** The game has a *closed
-  vocabulary* (~113 short prompts total), so `record.html` — the "Voice
+  vocabulary* (~177 short prompts total), so `record.html` — the "Voice
   Studio" — lets a parent record every prompt once (~10 min) with the
   browser's built-in `MediaRecorder`, then downloads a single generated
   `voice.js` (clips as base64 data URIs) that sits next to `index.html`. Data
@@ -50,9 +50,10 @@ service, no API keys, no external services. Instead:
   typing, no talking. A 5-year-old can drive everything with one finger.
 
 The clip-id scheme: `L_B` (full letter prompt), `W_cat` (word), `S_the`
-(sight word), `R_frog` (rhyme-only word), `P_*` (game phrases:
-spell/findword/rhyme/great/double/itwas/win/lose). The content lists
-(`LETTERS`/`WORDS`/`SIGHT`/`RHYME_WORDS`) are duplicated in `record.html` —
+(sight word), `R_frog` (rhyme-only word), `V_tear` (full Time Machine item),
+`P_*` (game phrases: spell/findword/rhyme/great/double/itwas/win/lose). The
+content lists (`LETTERS`/`WORDS`/`SIGHT`/`RHYME_WORDS`/`PAST`) are duplicated
+in `record.html` —
 **keep them in sync with `index.html`** when adding content, and re-record the
 new clips. Rhyme Time reuses `W_`/`S_` clips for words that already have them
 (the `wordClip()` helper picks the right prefix), so `RHYME_WORDS` in
@@ -63,7 +64,7 @@ parent-at-bedtime activity by design. Don't add transcription services back.
 
 ## Younger son's tracks (built, in `index.html`)
 
-Five tracks forming a learning ladder toward reading:
+Six tracks forming a learning ladder toward reading:
 
 1. **🔠 Letter Hunt** — letter recognition + initial sounds. TTS says "Find the
    letter B! B, as in ball!", a cue emoji (⚽) shows in the card, and the child
@@ -90,6 +91,18 @@ Five tracks forming a learning ladder toward reading:
    the picture in his head to hear the rhyme), and no emoji may repeat across
    families. The right answer plays back as "cat... hat! Great job!" for
    reinforcement.
+6. **🕰️ Time Machine** — irregular past tense, entirely by ear (oral
+   grammar). One `V_` clip per verb speaks the whole item — "Today I tear.
+   Yesterday I... teared? or tore?" — and two word cards appear in *that
+   exact spoken order*; the child taps the one that sounded right. Content:
+   `PAST` (64 verbs), each `{ now, past, wrong, pastFirst }`. **Authoring
+   rules:** the cards are deliberately NOT shuffled (order must match the
+   recording — vary `pastFirst` instead so the answer's position has no
+   pattern); `wrong` is the classic over-regularized kid form and must never
+   be a defensible real past tense (no pay/payed, wake/waked, dive/dived,
+   hang/hanged) or sound identical to the answer; skip homograph pasts
+   (read/read). Changing an item's options or `pastFirst` means re-recording
+   that verb's clip.
 
 Answer tiles are styled as chunky **ABC blocks**, each tinted its own hue by
 alphabet position — the spiritual sibling of the physical alphabet blocks and
